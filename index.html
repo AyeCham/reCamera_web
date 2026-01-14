@@ -1,581 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remote Camera Snapshot</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-    }
-    
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      padding: 30px;
-    }
-    
-    h1 {
-      color: #333;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .subtitle {
-      color: #666;
-      margin-bottom: 30px;
-      font-size: 14px;
-    }
-    
-    .config-section {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 30px;
-      border: 2px solid #e9ecef;
-    }
-    
-    .config-section h3 {
-      margin-bottom: 15px;
-      color: #495057;
-      font-size: 18px;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 15px;
-    }
-    
-    label strong {
-      display: block;
-      margin-bottom: 5px;
-      color: #495057;
-    }
-    
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 2px solid #dee2e6;
-      border-radius: 8px;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-    
-    input:focus, select:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-    
-    small {
-      display: block;
-      margin-top: 5px;
-      color: #6c757d;
-      font-size: 12px;
-    }
-    
-    .btn {
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: 600;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin: 5px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    }
-    
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-    
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-    
-    .btn-success {
-      background: #28a745;
-      color: white;
-    }
-    
-    .btn-danger {
-      background: #dc3545;
-      color: white;
-    }
-    
-    .btn-secondary {
-      background: #6c757d;
-      color: white;
-    }
-    
-    .preview-container {
-      border: 3px solid #dee2e6;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #000;
-      position: relative;
-      margin-bottom: 20px;
-    }
-    
-    #preview {
-      width: 100%;
-      display: block;
-      min-height: 400px;
-      object-fit: contain;
-    }
-    
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 15px;
-      margin: 20px 0;
-      padding: 20px;
-      background: #f8f9fa;
-      border-radius: 12px;
-    }
-    
-    .stat-item {
-      text-align: center;
-      padding: 15px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    
-    .stat-value {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    
-    .stat-label {
-      font-size: 12px;
-      color: #6c757d;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .controls {
-      text-align: center;
-      margin: 20px 0;
-    }
-    
-    #msg {
-      text-align: center;
-      font-size: 16px;
-      margin-top: 15px;
-      padding: 12px;
-      border-radius: 8px;
-      font-weight: 500;
-    }
-    
-    .history {
-      margin-top: 40px;
-    }
-    
-    .history h3 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-    
-    .history-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 15px;
-    }
-    
-    .history-item {
-      border: 2px solid #dee2e6;
-      border-radius: 12px;
-      overflow: hidden;
-      background: white;
-      transition: transform 0.2s;
-    }
-    
-    .history-item:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    }
-    
-    .history-item img {
-      width: 100%;
-      height: 150px;
-      object-fit: cover;
-    }
-    
-    .history-time {
-      padding: 10px;
-      font-size: 12px;
-      text-align: center;
-      background: #f8f9fa;
-      color: #495057;
-    }
-    
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-left: 10px;
-    }
-    
-    .status-connected { background: #d4edda; color: #155724; }
-    .status-disconnected { background: #f8d7da; color: #721c24; }
-    .status-connecting { background: #fff3cd; color: #856404; }
-    
-    @media (max-width: 768px) {
-      .container { padding: 20px; }
-      .stats { grid-template-columns: 1fr; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Local Camera Control</title>
+    <style>
+        :root { --primary: #4f46e5; --bg: #f3f4f6; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        .video-box { background: #000; width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; margin: 20px 0; border: 2px solid #ddd; }
+        img { width: 100%; height: 100%; object-fit: contain; }
+        .controls { display: flex; gap: 10px; justify-content: center; }
+        .btn { padding: 12px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+        .btn-snap { background: var(--primary); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #status { text-align: center; margin-bottom: 10px; font-weight: bold; }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>
-      Remote Camera Snapshot
-    </h1>
-    <p class="subtitle">Access your camera from anywhere in the world using MQTT</p>
-
-    <div class="config-section">
-      <h3>⚙️ MQTT Configuration</h3>
-      
-      <label>
-        <strong>MQTT Broker:</strong>
-        <select id="brokerSelect">
-          <option value="wss://broker.hivemq.com:8884/mqtt">HiveMQ Public (Free)</option>
-          <option value="wss://test.mosquitto.org:8081">Mosquitto Public (Free)</option>
-          <option value="custom">Custom Broker...</option>
-        </select>
-      </label>
-
-      <div id="customBrokerDiv" style="display:none">
-        <label>
-          <strong>Custom Broker URL:</strong>
-          <input 
-            id="customBroker" 
-            type="text" 
-            placeholder="wss://your-broker.com:8884/mqtt"
-          />
-        </label>
-      </div>
-      
-      <label>
-        <strong>Camera Topic:</strong>
-        <input 
-          id="cameraTopic" 
-          type="text" 
-          value="camera/mycam001/feed"
-        />
-        <small>Your camera publishes images to this topic</small>
-      </label>
-
-      <label>
-        <strong>Snapshot Command Topic:</strong>
-        <input 
-          id="snapshotTopic" 
-          type="text" 
-          value="camera/mycam001/snapshot"
-        />
-        <small>Send snapshot commands to this topic</small>
-      </label>
-
-      <div style="margin-top: 20px;">
-        <button onclick="connectMQTT()" class="btn btn-success">
-          🔌 Connect to MQTT
-        </button>
-        <button onclick="disconnectMQTT()" class="btn btn-danger" style="display:none" id="disconnectBtn">
-          ⛔ Disconnect
-        </button>
-        <span id="connectionStatus"></span>
-      </div>
-    </div>
-
-    <div class="preview-container">
-      <img 
-        id="preview" 
-        alt="Camera feed will appear here"
-      />
-    </div>
-
-    <div class="stats">
-      <div class="stat-item">
-        <div class="stat-value" style="color:#667eea" id="frameCount">0</div>
-        <div class="stat-label">Frames Received</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" style="color:#28a745" id="snapshotCount">0</div>
-        <div class="stat-label">Snapshots Taken</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value" style="color:#6c757d" id="fps">0</div>
-        <div class="stat-label">FPS</div>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button onclick="takeSnapshot()" class="btn btn-primary" disabled id="snapshotBtn">
-        📷 Take Snapshot
-      </button>
-      <button onclick="requestLiveFrame()" class="btn btn-secondary" id="refreshBtn" disabled>
-        🔄 Request Frame
-      </button>
-    </div>
-
-    <div id="msg"></div>
-
-    <div class="history">
-      <h3>📂 Recent Snapshots</h3>
-      <div class="history-grid" id="historyList"></div>
-    </div>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
-
-  <script>
-  (function () {
-    const imgEl = document.getElementById("preview");
-    const msgEl = document.getElementById("msg");
-    const statusEl = document.getElementById("connectionStatus");
-    const snapshotBtn = document.getElementById("snapshotBtn");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const disconnectBtn = document.getElementById("disconnectBtn");
-    const historyList = document.getElementById("historyList");
-    const frameCountEl = document.getElementById("frameCount");
-    const snapshotCountEl = document.getElementById("snapshotCount");
-    const fpsEl = document.getElementById("fps");
-
-    let client = null;
-    let lastImageBase64 = null;
-    let snapshotHistory = [];
-    let frameCount = 0;
-    let snapshotCount = 0;
-    let fpsCounter = 0;
-    let fpsInterval = null;
-
-    function showMessage(text, type) {
-      msgEl.innerText = text;
-      msgEl.style.background = type === "error" ? "#f8d7da" : type === "success" ? "#d4edda" : "#d1ecf1";
-      msgEl.style.color = type === "error" ? "#721c24" : type === "success" ? "#155724" : "#0c5460";
-      msgEl.style.display = "block";
-    }
-
-    function updateStatus(text, state) {
-      const badge = document.createElement('span');
-      badge.className = 'status-badge status-' + state;
-      badge.innerText = text;
-      statusEl.innerHTML = '';
-      statusEl.appendChild(badge);
-    }
-
-    window.connectMQTT = function() {
-      const brokerSelect = document.getElementById("brokerSelect").value;
-      const cameraTopic = document.getElementById("cameraTopic").value.trim();
-      const snapshotTopic = document.getElementById("snapshotTopic").value.trim();
-
-      let brokerUrl = brokerSelect;
-      if (brokerSelect === "custom") {
-        brokerUrl = document.getElementById("customBroker").value.trim();
-      }
-
-      if (!brokerUrl || !cameraTopic || !snapshotTopic) {
-        showMessage("❌ Please fill in all fields", "error");
-        return;
-      }
-
-      updateStatus("Connecting...", "connecting");
-      showMessage("Connecting to MQTT broker...", "info");
-
-      try {
-        client = mqtt.connect(brokerUrl, {
-          clientId: 'camera_web_' + Math.random().toString(16).substr(2, 8),
-          clean: true,
-          reconnectPeriod: 5000
-        });
-
-        client.on('connect', function() {
-          updateStatus("Connected", "connected");
-          showMessage("✅ Connected! Subscribing to camera feed...", "success");
-          
-          client.subscribe(cameraTopic, { qos: 0 }, function(err) {
-            if (err) {
-              showMessage("❌ Failed to subscribe: " + err.message, "error");
-            } else {
-              showMessage("✅ Subscribed to camera feed!", "success");
-              snapshotBtn.disabled = false;
-              refreshBtn.disabled = false;
-              disconnectBtn.style.display = 'inline-flex';
-            }
-          });
-
-          fpsInterval = setInterval(function() {
-            fpsEl.innerText = fpsCounter;
-            fpsCounter = 0;
-          }, 1000);
-        });
-
-        client.on('message', function(topic, message) {
-          try {
-            const data = JSON.parse(message.toString());
-            
-            if (data.image) {
-              lastImageBase64 = data.image;
-              imgEl.src = "data:image/jpeg;base64," + lastImageBase64;
-              
-              frameCount++;
-              fpsCounter++;
-              frameCountEl.innerText = frameCount;
-            }
-          } catch (err) {
-            console.error("Parse error:", err);
-          }
-        });
-
-        client.on('error', function(err) {
-          updateStatus("Error", "disconnected");
-          showMessage("❌ Connection error: " + err.message, "error");
-        });
-
-        client.on('offline', function() {
-          updateStatus("Offline", "disconnected");
-          showMessage("⚠️ Connection lost, reconnecting...", "error");
-        });
-
-        client.on('reconnect', function() {
-          updateStatus("Reconnecting...", "connecting");
-        });
-
-      } catch (err) {
-        updateStatus("Error", "disconnected");
-        showMessage("❌ Failed to connect: " + err.message, "error");
-      }
-    };
-
-    window.disconnectMQTT = function() {
-      if (client) {
-        client.end();
-        client = null;
-        updateStatus("Disconnected", "disconnected");
-        showMessage("Disconnected from MQTT broker", "info");
-        snapshotBtn.disabled = true;
-        refreshBtn.disabled = true;
-        disconnectBtn.style.display = 'none';
+    <div class="card">
+        <h2>📷 Camera Monitor</h2>
+        <div id="status">Connecting...</div>
         
-        if (fpsInterval) {
-          clearInterval(fpsInterval);
-          fpsInterval = null;
+        <div class="video-box">
+            <img id="stream" alt="Waiting for feed...">
+        </div>
+
+        <div class="controls">
+            <button id="snapBtn" class="btn btn-snap" onclick="takeSnapshot()" disabled>Capture & Save to Disk</button>
+        </div>
+    </div>
+
+    <script>
+        const streamImg = document.getElementById('stream');
+        const snapBtn = document.getElementById('snapBtn');
+        const statusEl = document.getElementById('status');
+        let currentBase64 = null;
+
+        // Establish WebSocket connection directly to the camera/Node-RED proxy
+        const ws = new WebSocket(`ws://${window.location.hostname}:8090`);
+
+        ws.onopen = () => {
+            statusEl.innerText = "● Live Connection Active";
+            statusEl.className = "success";
+            snapBtn.disabled = false;
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                // Adjust based on your camera's JSON structure
+                const data = JSON.parse(event.data);
+                const imageData = data.data?.image || data.image;
+                if (imageData) {
+                    currentBase64 = imageData;
+                    streamImg.src = "data:image/jpeg;base64," + imageData;
+                }
+            } catch (e) {
+                console.error("Frame error", e);
+            }
+        };
+
+        ws.onclose = () => {
+            statusEl.innerText = "○ Disconnected";
+            statusEl.className = "error";
+            snapBtn.disabled = true;
+        };
+
+        async function takeSnapshot() {
+            if (!currentBase64) return;
+            
+            snapBtn.disabled = true;
+            statusEl.innerText = "Saving...";
+
+            try {
+                const response = await fetch('/api/snapshot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: currentBase64, ts: Date.now() })
+                });
+
+                if (response.ok) {
+                    statusEl.innerText = "✅ Snapshot Saved Successfully";
+                    setTimeout(() => { statusEl.innerText = "● Live Connection Active"; }, 2000);
+                }
+            } catch (err) {
+                statusEl.innerText = "❌ Save Failed";
+                console.error(err);
+            } finally {
+                snapBtn.disabled = false;
+            }
         }
-      }
-    };
-
-    window.requestLiveFrame = function() {
-      if (!client || !client.connected) {
-        showMessage("❌ Not connected to MQTT", "error");
-        return;
-      }
-
-      const cameraTopic = document.getElementById("cameraTopic").value + "/request";
-      client.publish(cameraTopic, JSON.stringify({ command: "capture" }), { qos: 0 });
-      showMessage("📤 Frame request sent", "info");
-    };
-
-    window.takeSnapshot = function() {
-      if (!lastImageBase64) {
-        showMessage("❌ No image available yet", "error");
-        return;
-      }
-
-      if (!client || !client.connected) {
-        showMessage("❌ Not connected to MQTT", "error");
-        return;
-      }
-
-      const snapshotTopic = document.getElementById("snapshotTopic").value;
-      
-      showMessage("📤 Taking snapshot...", "info");
-      snapshotBtn.disabled = true;
-
-      const payload = JSON.stringify({
-        image: lastImageBase64,
-        ts: Date.now(),
-        timestamp: new Date().toISOString()
-      });
-
-      client.publish(snapshotTopic, payload, { qos: 1 }, function(err) {
-        if (err) {
-          showMessage("❌ Failed to send snapshot: " + err.message, "error");
-          snapshotBtn.disabled = false;
-        } else {
-          showMessage("✅ Snapshot saved successfully!", "success");
-          
-          snapshotCount++;
-          snapshotCountEl.innerText = snapshotCount;
-          
-          const snapshot = {
-            time: new Date().toLocaleString(),
-            image: "data:image/jpeg;base64," + lastImageBase64
-          };
-          snapshotHistory.unshift(snapshot);
-          if (snapshotHistory.length > 6) snapshotHistory.pop();
-          
-          renderHistory();
-          snapshotBtn.disabled = false;
-        }
-      });
-    };
-
-    function renderHistory() {
-      historyList.innerHTML = snapshotHistory.map(function(snap) {
-        return '<div class="history-item">' +
-          '<img src="' + snap.image + '"/>' +
-          '<div class="history-time">' + snap.time + '</div>' +
-          '</div>';
-      }).join('');
-    }
-
-    document.getElementById('brokerSelect').addEventListener('change', function(e) {
-      const customDiv = document.getElementById('customBrokerDiv');
-      customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
-    });
-
-    const savedSettings = localStorage.getItem('mqttSettings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      if (settings.broker) document.getElementById('brokerSelect').value = settings.broker;
-      if (settings.cameraTopic) document.getElementById('cameraTopic').value = settings.cameraTopic;
-      if (settings.snapshotTopic) document.getElementById('snapshotTopic').value = settings.snapshotTopic;
-    }
-
-    window.addEventListener('beforeunload', function() {
-      const settings = {
-        broker: document.getElementById('brokerSelect').value,
-        cameraTopic: document.getElementById('cameraTopic').value,
-        snapshotTopic: document.getElementById('snapshotTopic').value
-      };
-      localStorage.setItem('mqttSettings', JSON.stringify(settings));
-    });
-
-  })();
-  </script>
+    </script>
 </body>
 </html>

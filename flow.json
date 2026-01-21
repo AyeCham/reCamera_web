@@ -2234,7 +2234,8 @@
         "y": 360,
         "wires": [
             [
-                "57aa51875efe422b"
+                "57aa51875efe422b",
+                "b1a1c1e9e2b8a001"
             ]
         ]
     },
@@ -2376,7 +2377,7 @@
         "type": "function",
         "z": "5d5675cbc56f83c2",
         "name": "Detect Logger",
-        "func": "const text = msg.payload;\nif (typeof text !== \"string\") return null;\n\n// Parse your existing text payload\nconst lines = text.split(\"\\n\");\nconst counts = {};\nlet total = 0;\n\nfor (const line of lines) {\n    if (line.includes(\":\")) {\n        const [k, v] = line.split(\":\").map(s => s.trim());\n        if (k === \"total\") total = Number(v);\n        else counts[k] = Number(v);\n    }\n}\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/history_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"detect\",\n    time: now,\n    counts,\n    total\n};\n\nreturn msg;\n",
+        "func": "const text = msg.payload;\nif (typeof text !== \"string\") return null;\n\n// Parse your existing text payload\nconst lines = text.split(\"\\n\");\nconst counts = {};\nlet total = 0;\n\nfor (const line of lines) {\n    if (line.includes(\":\")) {\n        const [k, v] = line.split(\":\").map(s => s.trim());\n        if (k === \"total\") total = Number(v);\n        else counts[k] = Number(v);\n    }\n}\n\n// ✅ SKIP logging if total is 0 or invalid\nif (!total || total <= 0) {\n    return null;\n}\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/history_log_${now.split(\"T\")[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"detect\",\n    time: now,\n    counts,\n    total\n};\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -2443,8 +2444,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 650,
-        "y": 600,
+        "x": 590,
+        "y": 720,
         "wires": [
             [
                 "bd431a3abf514937"
@@ -2472,8 +2473,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
-        "y": 600,
+        "x": 170,
+        "y": 720,
         "wires": [
             [
                 "a48ae489eef96864"
@@ -2496,8 +2497,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 880,
-        "y": 600,
+        "x": 820,
+        "y": 720,
         "wires": [
             [
                 "b7906b6c924599c9"
@@ -2517,8 +2518,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 910,
-        "y": 740,
+        "x": 850,
+        "y": 860,
         "wires": []
     },
     {
@@ -2533,8 +2534,8 @@
         "sendError": false,
         "encoding": "none",
         "allProps": false,
-        "x": 540,
-        "y": 680,
+        "x": 480,
+        "y": 800,
         "wires": [
             [
                 "da2cb9a3d9cc3581"
@@ -2553,13 +2554,174 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 330,
-        "y": 680,
+        "x": 270,
+        "y": 800,
         "wires": [
             [
                 "aeaca9a4b58e6dad"
             ]
         ]
+    },
+    {
+        "id": "b1a1c1e9e2b8a001",
+        "type": "switch",
+        "z": "5d5675cbc56f83c2",
+        "name": "START triggers bulk upload",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "start",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 200,
+        "y": 440,
+        "wires": [
+            [
+                "c2e2f7b42b6a1101"
+            ]
+        ]
+    },
+    {
+        "id": "c2e2f7b42b6a1101",
+        "type": "exec",
+        "z": "5d5675cbc56f83c2",
+        "command": "ls /home/recamera/logs/*.jsonl",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "List all jsonl logs",
+        "x": 200,
+        "y": 560,
+        "wires": [
+            [
+                "e7f0c8bb1f3b2201"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "e7f0c8bb1f3b2201",
+        "type": "split",
+        "z": "5d5675cbc56f83c2",
+        "name": "Split filenames",
+        "splt": "\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "stream": false,
+        "addname": "",
+        "x": 420,
+        "y": 560,
+        "wires": [
+            [
+                "a7f5c9bcb4dd3301"
+            ]
+        ]
+    },
+    {
+        "id": "a7f5c9bcb4dd3301",
+        "type": "function",
+        "z": "5d5675cbc56f83c2",
+        "name": "Build upload request",
+        "func": "const path = msg.payload.trim();\nif (!path) return null;\n\nconst filename = path.split(\"/\").pop();\n\nmsg.filename = path;\nmsg.url = `https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/history/${filename}`;\nmsg.method = \"PUT\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 620,
+        "wires": [
+            [
+                "f21c04b9a1b14401"
+            ]
+        ]
+    },
+    {
+        "id": "f21c04b9a1b14401",
+        "type": "file in",
+        "z": "5d5675cbc56f83c2",
+        "name": "Read file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 620,
+        "y": 560,
+        "wires": [
+            [
+                "d45a4b9a8e112201"
+            ]
+        ]
+    },
+    {
+        "id": "d45a4b9a8e112201",
+        "type": "function",
+        "z": "5d5675cbc56f83c2",
+        "name": "Supabase headers",
+        "func": "const KEY = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoaW1ma3hzcGpjc3ZkZ2t4bGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjMwMDEsImV4cCI6MjA4NDUzOTAwMX0.k8QsBec2NsozPdj-9JR1oOb6XTagz8oATq98G6Vsmog\";\n\nmsg.headers = {\n  \"Authorization\": `Bearer ${KEY}`,\n  \"apikey\": KEY,\n  \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 640,
+        "wires": [
+            [
+                "c38e7e8f4a2a5501"
+            ]
+        ]
+    },
+    {
+        "id": "c38e7e8f4a2a5501",
+        "type": "http request",
+        "z": "5d5675cbc56f83c2",
+        "name": "Upload to Supabase",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 840,
+        "y": 540,
+        "wires": [
+            [
+                "f3b5c9f50c4e6601"
+            ]
+        ]
+    },
+    {
+        "id": "f3b5c9f50c4e6601",
+        "type": "debug",
+        "z": "5d5675cbc56f83c2",
+        "name": "Bulk upload result",
+        "active": true,
+        "tosidebar": true,
+        "complete": "payload",
+        "x": 930,
+        "y": 600,
+        "wires": []
     },
     {
         "id": "a77629ac6300069c",

@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>History</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,105 +10,117 @@
       margin: 0;
       padding: 20px;
     }
-
     h1 {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
-
+    .controls {
+      margin-bottom: 15px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
     }
-
     th, td {
       padding: 10px;
-      border: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
       text-align: left;
-      font-size: 14px;
     }
-
     th {
-      background: #f0f0f0;
+      background: #efefef;
     }
-
-    tr:nth-child(even) {
-      background: #fafafa;
+    .empty {
+      padding: 20px;
+      text-align: center;
+      color: #777;
     }
-
-    .type-start { color: green; font-weight: bold; }
-    .type-stop { color: red; font-weight: bold; }
-    .type-detect { color: #333; }
   </style>
 </head>
 <body>
 
   <h1>📜 History</h1>
 
-  <table>
+  <div class="controls">
+    <label>
+      Select date:
+      <input type="date" id="datePicker" />
+    </label>
+  </div>
+
+  <table id="historyTable">
     <thead>
       <tr>
-        <th>Type</th>
         <th>Time</th>
-        <th>Counts</th>
+        <th>Type</th>
         <th>Total</th>
+        <th>Counts</th>
       </tr>
     </thead>
-    <tbody id="history-body">
-      <tr>
-        <td colspan="4">Loading…</td>
-      </tr>
-    </tbody>
+    <tbody></tbody>
   </table>
 
-  <script>
-    const HISTORY_URL =
-      "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history/history_log_2026-01-21.jsonl";
+  <div id="empty" class="empty" style="display:none;">
+    No data for this day
+  </div>
 
-    async function loadHistory() {
-      const tbody = document.getElementById("history-body");
-      tbody.innerHTML = "";
+<script>
+const SUPABASE_BASE =
+  "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
 
-      try {
-        const res = await fetch(HISTORY_URL);
-        const text = await res.text();
+const tableBody = document.querySelector("#historyTable tbody");
+const emptyDiv = document.getElementById("empty");
+const datePicker = document.getElementById("datePicker");
 
-        const lines = text.trim().split("\n");
+// Set today as default
+const today = new Date().toISOString().split("T")[0];
+datePicker.value = today;
+loadDate(today);
 
-        for (const line of lines) {
-          if (!line) continue;
+datePicker.addEventListener("change", e => {
+  loadDate(e.target.value);
+});
 
-          const entry = JSON.parse(line);
+async function loadDate(date) {
+  tableBody.innerHTML = "";
+  emptyDiv.style.display = "none";
 
-          const tr = document.createElement("tr");
+  const url = `${SUPABASE_BASE}/history_log_${date}.jsonl`;
 
-          const typeClass = `type-${entry.type}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Not found");
 
-          tr.innerHTML = `
-            <td class="${typeClass}">${entry.type}</td>
-            <td>${new Date(entry.time).toLocaleString()}</td>
-            <td>${formatCounts(entry.counts)}</td>
-            <td>${entry.total ?? ""}</td>
-          `;
+    const text = await res.text();
+    const lines = text.trim().split("\n");
 
-          tbody.appendChild(tr);
-        }
-      } catch (err) {
-        tbody.innerHTML =
-          `<tr><td colspan="4">Failed to load history</td></tr>`;
-        console.error(err);
-      }
+    if (lines.length === 0) throw new Error("Empty");
+
+    for (const line of lines) {
+      const row = JSON.parse(line);
+      addRow(row);
     }
+  } catch (err) {
+    emptyDiv.style.display = "block";
+  }
+}
 
-    function formatCounts(counts) {
-      if (!counts || Object.keys(counts).length === 0) return "";
-      return Object.entries(counts)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", ");
-    }
+function addRow(entry) {
+  const tr = document.createElement("tr");
 
-    loadHistory();
-  </script>
+  const time = entry.time
+    ? new Date(entry.time).toLocaleTimeString()
+    : "";
+
+  tr.innerHTML = `
+    <td>${time}</td>
+    <td>${entry.type || ""}</td>
+    <td>${entry.total ?? ""}</td>
+    <td>${entry.counts ? JSON.stringify(entry.counts) : ""}</td>
+  `;
+
+  tableBody.appendChild(tr);
+}
+</script>
 
 </body>
 </html>

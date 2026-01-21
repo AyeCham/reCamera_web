@@ -1,96 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Local Camera Control</title>
-    <style>
-        :root { --primary: #4f46e5; --bg: #f3f4f6; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
-        .video-box { background: #000; width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; margin: 20px 0; border: 2px solid #ddd; }
-        img { width: 100%; height: 100%; object-fit: contain; }
-        .controls { display: flex; gap: 10px; justify-content: center; }
-        .btn { padding: 12px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
-        .btn-snap { background: var(--primary); color: white; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        #status { text-align: center; margin-bottom: 10px; font-weight: bold; }
-        .success { color: #059669; }
-        .error { color: #dc2626; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    .type-start { color: green; font-weight: bold; }
+    .type-stop { color: red; font-weight: bold; }
+    .type-detect { color: #333; }
+  </style>
 </head>
 <body>
-    <div class="card">
-        <h2>📷 Camera Monitor</h2>
-        <div id="status">Connecting...</div>
-        
-        <div class="video-box">
-            <img id="stream" alt="Waiting for feed...">
-        </div>
 
-        <div class="controls">
-            <button id="snapBtn" class="btn btn-snap" onclick="takeSnapshot()" disabled>Capture & Save to Disk</button>
-        </div>
-    </div>
+  <h1>📜 History</h1>
 
-    <script>
-        const streamImg = document.getElementById('stream');
-        const snapBtn = document.getElementById('snapBtn');
-        const statusEl = document.getElementById('status');
-        let currentBase64 = null;
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Time</th>
+        <th>Counts</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="history-body">
+      <tr>
+        <td colspan="4">Loading…</td>
+      </tr>
+    </tbody>
+  </table>
 
-        // Establish WebSocket connection directly to the camera/Node-RED proxy
-        const ws = new WebSocket(`ws://${window.location.hostname}:8090`);
+  <script>
+    const HISTORY_URL =
+      "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history/history_log_2026-01-21.jsonl";
 
-        ws.onopen = () => {
-            statusEl.innerText = "● Live Connection Active";
-            statusEl.className = "success";
-            snapBtn.disabled = false;
-        };
+    async function loadHistory() {
+      const tbody = document.getElementById("history-body");
+      tbody.innerHTML = "";
 
-        ws.onmessage = (event) => {
-            try {
-                // Adjust based on your camera's JSON structure
-                const data = JSON.parse(event.data);
-                const imageData = data.data?.image || data.image;
-                if (imageData) {
-                    currentBase64 = imageData;
-                    streamImg.src = "data:image/jpeg;base64," + imageData;
-                }
-            } catch (e) {
-                console.error("Frame error", e);
-            }
-        };
+      try {
+        const res = await fetch(HISTORY_URL);
+        const text = await res.text();
 
-        ws.onclose = () => {
-            statusEl.innerText = "○ Disconnected";
-            statusEl.className = "error";
-            snapBtn.disabled = true;
-        };
+        const lines = text.trim().split("\n");
 
-        async function takeSnapshot() {
-            if (!currentBase64) return;
-            
-            snapBtn.disabled = true;
-            statusEl.innerText = "Saving...";
+        for (const line of lines) {
+          if (!line) continue;
 
-            try {
-                const response = await fetch('/api/snapshot', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: currentBase64, ts: Date.now() })
-                });
+          const entry = JSON.parse(line);
 
-                if (response.ok) {
-                    statusEl.innerText = "✅ Snapshot Saved Successfully";
-                    setTimeout(() => { statusEl.innerText = "● Live Connection Active"; }, 2000);
-                }
-            } catch (err) {
-                statusEl.innerText = "❌ Save Failed";
-                console.error(err);
-            } finally {
-                snapBtn.disabled = false;
-            }
+          const tr = document.createElement("tr");
+
+          const typeClass = `type-${entry.type}`;
+
+          tr.innerHTML = `
+            <td class="${typeClass}">${entry.type}</td>
+            <td>${new Date(entry.time).toLocaleString()}</td>
+            <td>${formatCounts(entry.counts)}</td>
+            <td>${entry.total ?? ""}</td>
+          `;
+
+          tbody.appendChild(tr);
         }
-    </script>
+      } catch (err) {
+        tbody.innerHTML =
+          `<tr><td colspan="4">Failed to load history</td></tr>`;
+        console.error(err);
+      }
+    }
+
+    function formatCounts(counts) {
+      if (!counts || Object.keys(counts).length === 0) return "";
+      return Object.entries(counts)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
+    }
+
+    loadHistory();
+  </script>
+
 </body>
 </html>

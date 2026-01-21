@@ -1,174 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Object Counting History</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    margin: 0;
-    padding: 16px;
-  }
+  <meta charset="UTF-8" />
+  <title>History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  h1 {
-    margin-bottom: 16px;
-  }
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+    }
 
-  .session {
-    background: white;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
+    header {
+      background: #111;
+      color: white;
+      padding: 16px 24px;
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
 
-  .session-header {
-    font-weight: bold;
-    margin-bottom: 8px;
-  }
+    main {
+      padding: 20px;
+    }
 
-  .meta {
-    font-size: 0.9em;
-    color: #555;
-    margin-bottom: 10px;
-  }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 8px;
-  }
+    thead {
+      background: #eee;
+    }
 
-  th, td {
-    border: 1px solid #ddd;
-    padding: 6px 8px;
-    font-size: 0.9em;
-  }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      font-size: 0.95rem;
+    }
 
-  th {
-    background: #eee;
-  }
+    th {
+      font-weight: bold;
+      color: #555;
+    }
 
-  .counts {
-    font-family: monospace;
-    white-space: pre;
-  }
+    tbody tr:hover {
+      background: #f9f9f9;
+    }
 
-  .total {
-    font-weight: bold;
-  }
-</style>
+    .empty {
+      text-align: center;
+      color: #888;
+      padding: 30px;
+      font-style: italic;
+    }
+  </style>
 </head>
 <body>
 
-<h1>📊 Object Counting History</h1>
+  <header>
+    📜 History
+  </header>
 
-<input type="file" id="fileInput" accept=".jsonl" />
-
-<div id="sessions"></div>
-
-<script>
-document.getElementById("fileInput").addEventListener("change", handleFile);
-
-function handleFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => parseLog(reader.result);
-  reader.readAsText(file);
-}
-
-function parseLog(text) {
-  const lines = text.trim().split("\n").filter(Boolean);
-  const events = lines.map(l => JSON.parse(l));
-
-  const sessions = [];
-  let current = null;
-
-  for (const ev of events) {
-    if (ev.type === "start") {
-      current = {
-        start: ev.time,
-        stop: null,
-        detects: []
-      };
-    }
-    else if (ev.type === "detect" && current) {
-      current.detects.push(ev);
-    }
-    else if (ev.type === "stop" && current) {
-      current.stop = ev.time;
-      sessions.push(current);
-      current = null;
-    }
-  }
-
-  renderSessions(sessions);
-}
-
-function renderSessions(sessions) {
-  const container = document.getElementById("sessions");
-  container.innerHTML = "";
-
-  sessions.forEach((s, idx) => {
-    const div = document.createElement("div");
-    div.className = "session";
-
-    const duration = calcDuration(s.start, s.stop);
-    const lastDetect = s.detects[s.detects.length - 1];
-
-    div.innerHTML = `
-      <div class="session-header">Session ${idx + 1}</div>
-      <div class="meta">
-        Start: ${s.start}<br/>
-        Stop: ${s.stop}<br/>
-        Duration: ${duration}
-      </div>
-
-      <div class="meta total">
-        Final Total: ${lastDetect ? lastDetect.total : 0}
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Counts</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${s.detects.map(d => `
-            <tr>
-              <td>${d.time}</td>
-              <td class="counts">${formatCounts(d.counts)}</td>
-              <td>${d.total}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    `;
-
-    container.appendChild(div);
-  });
-}
-
-function formatCounts(counts) {
-  if (!counts || Object.keys(counts).length === 0) return "(none)";
-  return Object.entries(counts)
-    .map(([k,v]) => `${k}: ${v}`)
-    .join("\n");
-}
-
-function calcDuration(start, stop) {
-  if (!start || !stop) return "N/A";
-  const ms = new Date(stop) - new Date(start);
-  if (isNaN(ms)) return "N/A";
-  return (ms / 1000).toFixed(2) + " s";
-}
-</script>
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Event</th>
+          <th>Details</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="4" class="empty">
+            No history loaded
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
 
 </body>
 </html>

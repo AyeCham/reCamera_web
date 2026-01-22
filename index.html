@@ -34,17 +34,11 @@
       text-align: center;
       color: #777;
     }
-    .refresh-indicator {
-      display: inline-block;
-      margin-left: 10px;
-      color: #666;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
 
-  <h1>📜 History <span class="refresh-indicator" id="refreshIndicator"></span></h1>
+  <h1>📜 History</h1>
 
   <div class="controls">
     <label>
@@ -76,10 +70,8 @@ const SUPABASE_BASE =
 const tableBody = document.querySelector("#historyTable tbody");
 const emptyDiv = document.getElementById("empty");
 const datePicker = document.getElementById("datePicker");
-const refreshIndicator = document.getElementById("refreshIndicator");
 
 let refreshInterval;
-let countdown = 60;
 
 // Set today as default
 const today = new Date().toISOString().split("T")[0];
@@ -91,21 +83,10 @@ startAutoRefresh();
 
 datePicker.addEventListener("change", e => {
   loadDate(e.target.value);
-  // Reset the countdown when user manually changes date
-  countdown = 60;
 });
 
 function startAutoRefresh() {
-  // Update countdown every second
-  setInterval(() => {
-    countdown--;
-    if (countdown <= 0) {
-      countdown = 60;
-    }
-    refreshIndicator.textContent = `(refreshing in ${countdown}s)`;
-  }, 1000);
-
-  // Refresh data every 60 seconds
+  // Refresh data every 60 seconds silently
   refreshInterval = setInterval(() => {
     loadDate(datePicker.value);
   }, 60000);

@@ -34,13 +34,6 @@
       text-align: center;
       color: #777;
     }
-    .new-row {
-      animation: highlight 1s ease-in-out;
-    }
-    @keyframes highlight {
-      0% { background-color: #ffffcc; }
-      100% { background-color: white; }
-    }
   </style>
 </head>
 <body>
@@ -78,7 +71,6 @@ const tableBody = document.querySelector("#historyTable tbody");
 const emptyDiv = document.getElementById("empty");
 const datePicker = document.getElementById("datePicker");
 
-let currentData = [];
 let refreshInterval;
 
 // Set today as default
@@ -86,19 +78,18 @@ const today = new Date().toISOString().split("T")[0];
 datePicker.value = today;
 loadDate(today);
 
-// Start polling for updates
-startPolling();
+// Start auto-refresh
+startAutoRefresh();
 
 datePicker.addEventListener("change", e => {
-  currentData = [];
   loadDate(e.target.value);
 });
 
-function startPolling() {
-  // Check for updates every 5 seconds (less noticeable than 60s)
+function startAutoRefresh() {
+  // Refresh data every 60 seconds silently
   refreshInterval = setInterval(() => {
-    checkForUpdates(datePicker.value);
-  }, 5000);
+    loadDate(datePicker.value);
+  }, 60000);
 }
 
 async function loadDate(date) {
@@ -112,58 +103,21 @@ async function loadDate(date) {
     if (!res.ok) throw new Error("Not found");
 
     const text = await res.text();
-    const lines = text.trim().split("\n").filter(line => line);
+    const lines = text.trim().split("\n");
 
     if (lines.length === 0) throw new Error("Empty");
 
-    currentData = lines.map(line => JSON.parse(line));
-    
-    for (const row of currentData) {
-      addRow(row, false);
+    for (const line of lines) {
+      const row = JSON.parse(line);
+      addRow(row);
     }
   } catch (err) {
     emptyDiv.style.display = "block";
-    currentData = [];
   }
 }
 
-async function checkForUpdates(date) {
-  const url = `${SUPABASE_BASE}/history_log_${date}.jsonl`;
-
-  try {
-    const res = await fetch(url, { 
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    if (!res.ok) return;
-
-    const text = await res.text();
-    const lines = text.trim().split("\n").filter(line => line);
-    const newData = lines.map(line => JSON.parse(line));
-
-    // Check if there are new entries
-    if (newData.length > currentData.length) {
-      // Only add the new entries
-      const newEntries = newData.slice(currentData.length);
-      for (const entry of newEntries) {
-        addRow(entry, true);
-      }
-      currentData = newData;
-    } else if (newData.length < currentData.length) {
-      // Data was cleared or modified, reload completely
-      currentData = [];
-      loadDate(date);
-    }
-  } catch (err) {
-    // Silently fail, will try again in next poll
-  }
-}
-
-function addRow(entry, isNew = false) {
+function addRow(entry) {
   const tr = document.createElement("tr");
-  if (isNew) {
-    tr.className = "new-row";
-  }
 
   const time = entry.time
     ? new Date(entry.time).toLocaleTimeString()

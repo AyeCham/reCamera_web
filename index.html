@@ -69,6 +69,10 @@ const SUPABASE_BASE =
 const tableBody = document.querySelector("#historyTable tbody");
 const emptyDiv = document.getElementById("empty");
 const datePicker = document.getElementById("datePicker");
+let refreshInterval;
+let countdown = 60;
+startAutoRefresh();
+
 
 // Set today as default
 const today = new Date().toISOString().split("T")[0];
@@ -77,6 +81,8 @@ loadDate(today);
 
 datePicker.addEventListener("change", e => {
   loadDate(e.target.value);
+  countdown = 60;
+
 });
 
 async function loadDate(date) {
@@ -102,7 +108,20 @@ async function loadDate(date) {
     emptyDiv.style.display = "block";
   }
 }
+function startAutoRefresh() {
+  // Update countdown every second
+  setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      countdown = 60;
+    }
+  }, 1000);
 
+  // Refresh data every 60 seconds
+  refreshInterval = setInterval(() => {
+    loadDate(datePicker.value);
+  }, 60000);
+}
 function addRow(entry) {
   const tr = document.createElement("tr");
 

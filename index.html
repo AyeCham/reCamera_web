@@ -2,72 +2,267 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conveyor History</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       padding: 20px;
     }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
     h1 {
-      margin-bottom: 10px;
+      color: white;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
+
     .controls {
-      margin-bottom: 15px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
     }
-    table {
+
+    .controls label {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .controls input[type="date"] {
+      padding: 8px 12px;
+      border: 2px solid #667eea;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .auto-refresh {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .refresh-indicator {
+      width: 10px;
+      height: 10px;
+      background: #4caf50;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .sessions {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .session {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .session-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .session-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .session-duration {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .session-content {
+      padding: 20px;
+    }
+
+    .session-times {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .time-box {
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .time-box.start {
+      background: #e8f5e9;
+      border-left-color: #4caf50;
+    }
+
+    .time-box.stop {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+
+    .time-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .time-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .counts-table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
     }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
+
+    .counts-table th {
+      background: #f5f5f5;
+      padding: 12px;
       text-align: left;
+      font-weight: 600;
+      color: #555;
+      border-bottom: 2px solid #667eea;
     }
-    th {
-      background: #efefef;
+
+    .counts-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e0e0e0;
     }
+
+    .counts-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .counts-table tr:hover {
+      background: #f9f9f9;
+    }
+
+    .item-name {
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .item-count {
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .total-row {
+      background: #f0f4ff !important;
+      font-weight: 700;
+    }
+
+    .total-row td {
+      border-top: 2px solid #667eea;
+      padding-top: 15px;
+    }
+
     .empty {
+      background: white;
+      padding: 60px 20px;
+      text-align: center;
+      border-radius: 10px;
+      color: #999;
+      font-size: 18px;
+    }
+
+    .empty::before {
+      content: "📭";
+      display: block;
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .no-counts {
+      color: #999;
+      font-style: italic;
       padding: 20px;
       text-align: center;
-      color: #777;
+    }
+
+    @media (max-width: 768px) {
+      .session-times {
+        grid-template-columns: 1fr;
+      }
+
+      .session-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
     }
   </style>
 </head>
 <body>
 
-  <h1>📜 History</h1>
+  <div class="container">
+    <h1>📊 Conveyor History</h1>
 
-  <div class="controls">
-    <label>
-      Select date:
-      <input type="date" id="datePicker" />
-    </label>
-  </div>
+    <div class="controls">
+      <label>
+        📅 Select Date:
+        <input type="date" id="datePicker" />
+      </label>
+      <div class="auto-refresh">
+        <div class="refresh-indicator"></div>
+        Auto-refresh every 60s
+      </div>
+    </div>
 
-  <table id="historyTable">
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Type</th>
-        <th>Counts</th>
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <div id="sessions" class="sessions"></div>
 
-  <div id="empty" class="empty" style="display:none;">
-    No data for this day
+    <div id="empty" class="empty" style="display:none;">
+      No sessions found for this date
+    </div>
   </div>
 
 <script>
-const SUPABASE_BASE =
-  "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
+const SUPABASE_BASE = "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
 
-const tableBody = document.querySelector("#historyTable tbody");
+const sessionsDiv = document.getElementById("sessions");
 const emptyDiv = document.getElementById("empty");
 const datePicker = document.getElementById("datePicker");
 
@@ -86,14 +281,13 @@ datePicker.addEventListener("change", e => {
 });
 
 function startAutoRefresh() {
-  // Refresh data every 60 seconds silently
   refreshInterval = setInterval(() => {
     loadDate(datePicker.value);
-  }, 60000);
+  }, 60000); // 60 seconds
 }
 
 async function loadDate(date) {
-  tableBody.innerHTML = "";
+  sessionsDiv.innerHTML = "";
   emptyDiv.style.display = "none";
 
   const url = `${SUPABASE_BASE}/linecross_log_${date}.jsonl`;
@@ -103,34 +297,170 @@ async function loadDate(date) {
     if (!res.ok) throw new Error("Not found");
 
     const text = await res.text();
-    const lines = text.trim().split("\n");
+    const lines = text.trim().split("\n").filter(l => l);
 
     if (lines.length === 0) throw new Error("Empty");
 
-    for (const line of lines) {
-      const row = JSON.parse(line);
-      addRow(row);
+    const events = lines.map(line => JSON.parse(line));
+    const sessions = parseSessions(events);
+
+    if (sessions.length === 0) {
+      emptyDiv.style.display = "block";
+      return;
     }
+
+    sessions.forEach(session => renderSession(session));
+
   } catch (err) {
+    console.error("Load error:", err);
     emptyDiv.style.display = "block";
   }
 }
 
-function addRow(entry) {
-  const tr = document.createElement("tr");
+function parseSessions(events) {
+  const sessions = [];
+  let currentSession = null;
 
-  const time = entry.time
-    ? new Date(entry.time).toLocaleTimeString()
-    : "";
+  for (const event of events) {
+    if (event.type === "session_start") {
+      // Start new session
+      currentSession = {
+        startTime: event.time,
+        stopTime: null,
+        counts: {},
+        activeItems: {} // Track items waiting for OUT
+      };
+    } 
+    else if (event.type === "session_stop") {
+      if (currentSession) {
+        currentSession.stopTime = event.time;
+        sessions.push(currentSession);
+        currentSession = null;
+      }
+    }
+    else if (event.type === "conveyor_pass" && currentSession) {
+      const item = event.item;
+      const direction = event.direction;
 
-  tr.innerHTML = `
-    <td>${time}</td>
-    <td>${entry.type || ""}</td>
-    <td>${entry.counts ? JSON.stringify(entry.counts) : ""}</td>
-    <td>${entry.total ?? ""}</td>
+      if (direction === "in") {
+        // Mark item as active (waiting for OUT)
+        if (!currentSession.activeItems[item]) {
+          currentSession.activeItems[item] = 0;
+        }
+        currentSession.activeItems[item]++;
+      }
+      else if (direction === "out") {
+        // Check if this item has a matching IN
+        if (currentSession.activeItems[item] && currentSession.activeItems[item] > 0) {
+          // Count it! (complete IN → OUT pass)
+          currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
+          currentSession.activeItems[item]--;
+        }
+      }
+    }
+  }
+
+  // If there's an active session without stop, include it
+  if (currentSession) {
+    currentSession.stopTime = null; // Still running
+    sessions.push(currentSession);
+  }
+
+  return sessions;
+}
+
+function renderSession(session) {
+  const sessionDiv = document.createElement("div");
+  sessionDiv.className = "session";
+
+  const startTime = formatDateTime(session.startTime);
+  const stopTime = session.stopTime ? formatDateTime(session.stopTime) : "Still running...";
+  const duration = session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "—";
+
+  const totalCount = Object.values(session.counts).reduce((a, b) => a + b, 0);
+
+  let countsHTML = "";
+  if (Object.keys(session.counts).length > 0) {
+    countsHTML = `
+      <table class="counts-table">
+        <thead>
+          <tr>
+            <th>Item Type</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Object.entries(session.counts)
+            .map(([item, count]) => `
+              <tr>
+                <td class="item-name">${item}</td>
+                <td class="item-count">${count}</td>
+              </tr>
+            `).join("")}
+          <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td class="item-count">${totalCount}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  } else {
+    countsHTML = '<div class="no-counts">No complete passes in this session</div>';
+  }
+
+  sessionDiv.innerHTML = `
+    <div class="session-header">
+      <div class="session-title">
+        Session ${session.stopTime ? '(Completed)' : '(Active)'}
+      </div>
+      <div class="session-duration">
+        Duration: ${duration}
+      </div>
+    </div>
+    <div class="session-content">
+      <div class="session-times">
+        <div class="time-box start">
+          <div class="time-label">🟢 Start</div>
+          <div class="time-value">${startTime}</div>
+        </div>
+        <div class="time-box stop">
+          <div class="time-label">${session.stopTime ? '🔴 Stop' : '⏳ Running'}</div>
+          <div class="time-value">${stopTime}</div>
+        </div>
+      </div>
+      ${countsHTML}
+    </div>
   `;
 
-  tableBody.appendChild(tr);
+  sessionsDiv.appendChild(sessionDiv);
+}
+
+function formatDateTime(isoString) {
+  if (!isoString) return "—";
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function calculateDuration(start, stop) {
+  const ms = new Date(stop) - new Date(start);
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
 }
 </script>
 

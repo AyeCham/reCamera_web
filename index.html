@@ -13,30 +13,30 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #ffffff;
       min-height: 100vh;
       padding: 20px;
+      color: #333;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
     h1 {
-      color: white;
-      margin-bottom: 20px;
-      text-align: center;
-      font-size: 2.5em;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+      color: #333;
+      margin-bottom: 25px;
+      font-size: 28px;
+      font-weight: 600;
     }
 
     .controls {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      background: #f8f9fa;
+      padding: 15px 20px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border: 1px solid #e0e0e0;
       display: flex;
       gap: 15px;
       align-items: center;
@@ -44,14 +44,17 @@
     }
 
     .controls label {
-      font-weight: 600;
-      color: #333;
+      font-weight: 500;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .controls input[type="date"] {
       padding: 8px 12px;
-      border: 2px solid #667eea;
-      border-radius: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
       font-size: 14px;
     }
 
@@ -61,12 +64,12 @@
       align-items: center;
       gap: 8px;
       color: #666;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .refresh-indicator {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       background: #4caf50;
       border-radius: 50%;
       animation: pulse 2s infinite;
@@ -74,7 +77,7 @@
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50% { opacity: 0.3; }
     }
 
     .sessions {
@@ -84,33 +87,35 @@
     }
 
     .session {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      background: #fafafa;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
       overflow: hidden;
     }
 
     .session-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: #f5f5f5;
       padding: 15px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid #e0e0e0;
     }
 
     .session-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
+      color: #333;
     }
 
     .session-duration {
-      font-size: 14px;
-      opacity: 0.9;
+      font-size: 13px;
+      color: #666;
     }
 
     .session-content {
       padding: 20px;
+      background: white;
     }
 
     .session-times {
@@ -119,36 +124,28 @@
       gap: 15px;
       margin-bottom: 20px;
       padding-bottom: 20px;
-      border-bottom: 2px solid #f0f0f0;
+      border-bottom: 1px solid #e0e0e0;
     }
 
     .time-box {
-      padding: 12px;
-      border-radius: 8px;
-      border-left: 4px solid #667eea;
-    }
-
-    .time-box.start {
-      background: #e8f5e9;
-      border-left-color: #4caf50;
-    }
-
-    .time-box.stop {
-      background: #ffebee;
-      border-left-color: #f44336;
+      padding: 12px 15px;
+      border-radius: 5px;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
     }
 
     .time-label {
-      font-size: 12px;
-      color: #666;
+      font-size: 11px;
+      color: #888;
       font-weight: 600;
       text-transform: uppercase;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
     }
 
     .time-value {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 500;
       color: #333;
     }
 
@@ -158,55 +155,58 @@
     }
 
     .counts-table th {
-      background: #f5f5f5;
-      padding: 12px;
+      background: #f8f9fa;
+      padding: 12px 15px;
       text-align: left;
       font-weight: 600;
       color: #555;
-      border-bottom: 2px solid #667eea;
+      font-size: 13px;
+      border-bottom: 2px solid #e0e0e0;
     }
 
     .counts-table td {
-      padding: 12px;
-      border-bottom: 1px solid #e0e0e0;
+      padding: 12px 15px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
     }
 
     .counts-table tr:last-child td {
       border-bottom: none;
     }
 
-    .counts-table tr:hover {
+    .counts-table tbody tr:hover {
       background: #f9f9f9;
     }
 
     .item-name {
-      font-weight: 600;
-      color: #667eea;
+      font-weight: 500;
+      color: #333;
     }
 
     .item-count {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 16px;
+      font-weight: 600;
       color: #333;
     }
 
     .total-row {
-      background: #f0f4ff !important;
-      font-weight: 700;
+      background: #f5f5f5 !important;
     }
 
     .total-row td {
-      border-top: 2px solid #667eea;
+      border-top: 2px solid #e0e0e0;
       padding-top: 15px;
+      font-weight: 600;
     }
 
     .empty {
-      background: white;
+      background: #fafafa;
       padding: 60px 20px;
       text-align: center;
-      border-radius: 10px;
+      border-radius: 8px;
       color: #999;
-      font-size: 18px;
+      font-size: 16px;
+      border: 1px solid #e0e0e0;
     }
 
     .empty::before {
@@ -221,6 +221,7 @@
       font-style: italic;
       padding: 20px;
       text-align: center;
+      font-size: 14px;
     }
 
     @media (max-width: 768px) {
@@ -231,7 +232,7 @@
       .session-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
       }
     }
   </style>
@@ -239,11 +240,11 @@
 <body>
 
   <div class="container">
-    <h1>📊 Conveyor History</h1>
+    <h1>Conveyor History</h1>
 
     <div class="controls">
       <label>
-        📅 Select Date:
+        Select Date:
         <input type="date" id="datePicker" />
       </label>
       <div class="auto-refresh">
@@ -398,7 +399,7 @@ function renderSession(session) {
               </tr>
             `).join("")}
           <tr class="total-row">
-            <td><strong>TOTAL</strong></td>
+            <td>TOTAL</td>
             <td class="item-count">${totalCount}</td>
           </tr>
         </tbody>
@@ -419,12 +420,12 @@ function renderSession(session) {
     </div>
     <div class="session-content">
       <div class="session-times">
-        <div class="time-box start">
-          <div class="time-label">🟢 Start</div>
+        <div class="time-box">
+          <div class="time-label">Start</div>
           <div class="time-value">${startTime}</div>
         </div>
-        <div class="time-box stop">
-          <div class="time-label">${session.stopTime ? '🔴 Stop' : '⏳ Running'}</div>
+        <div class="time-box">
+          <div class="time-label">${session.stopTime ? 'Stop' : 'Running'}</div>
           <div class="time-value">${stopTime}</div>
         </div>
       </div>

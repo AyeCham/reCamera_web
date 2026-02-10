@@ -328,8 +328,7 @@ function parseSessions(events) {
       currentSession = {
         startTime: event.time,
         stopTime: null,
-        counts: {},
-        activeItems: {} // Track items waiting for OUT
+        counts: {}
       };
     } 
     else if (event.type === "session_stop") {
@@ -339,24 +338,11 @@ function parseSessions(events) {
         currentSession = null;
       }
     }
-    else if (event.type === "conveyor_pass" && currentSession) {
-      const item = event.item;
-      const direction = event.direction;
-
-      if (direction === "in") {
-        // Mark item as active (waiting for OUT)
-        if (!currentSession.activeItems[item]) {
-          currentSession.activeItems[item] = 0;
-        }
-        currentSession.activeItems[item]++;
-      }
-      else if (direction === "out") {
-        // Check if this item has a matching IN
-        if (currentSession.activeItems[item] && currentSession.activeItems[item] > 0) {
-          // Count it! (complete IN → OUT pass)
-          currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
-          currentSession.activeItems[item]--;
-        }
+    else if (event.type === "counted_pass" && currentSession) {
+      // Only count if direction is "downward_pass"
+      if (event.direction === "downward_pass") {
+        const item = event.item;
+        currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
       }
     }
   }

@@ -96,7 +96,7 @@ async function loadDate(date) {
   tableBody.innerHTML = "";
   emptyDiv.style.display = "none";
 
-  const url = `${SUPABASE_BASE}/history_log_${date}.jsonl`;
+  const url = `${SUPABASE_BASE}/linecross_log_${date}.jsonl`;
 
   try {
     const res = await fetch(url);

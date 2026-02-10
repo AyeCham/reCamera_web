@@ -335,8 +335,9 @@ function parseSessions(events) {
   const sessions = [];
   let currentSession = null;
 
-  for (const event of events) {
-    console.log("Processing event:", event);
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    console.log(`[${i}] Processing:`, event);
 
     if (event.type === "session_start") {
       // Start new session
@@ -344,8 +345,8 @@ function parseSessions(events) {
         startTime: event.time,
         stopTime: null,
         counts: {},
-        totalEvents: 0,
-        countedPasses: 0
+        validSequences: 0,
+        invalidSequences: 0
       };
       console.log("Started new session at", event.time);
     } 
@@ -357,22 +358,45 @@ function parseSessions(events) {
         currentSession = null;
       }
     }
-    else if (event.type === "counted_pass" && currentSession) {
-      currentSession.totalEvents++;
-      
-      // Only count if direction is "downward_pass"
-      if (event.direction === "downward_pass") {
-        const item = event.item;
-        currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
-        currentSession.countedPasses++;
-        console.log(`Counted pass for ${item}, now at ${currentSession.counts[item]}`);
+    else if (event.type === "zone_in" && currentSession) {
+      // Check if next 2 events form valid sequence: IN → OUT → downward_pass
+      const nextEvent1 = events[i + 1];
+      const nextEvent2 = events[i + 2];
+
+      console.log(`  Checking sequence for ${event.item}:`);
+      console.log(`    [${i}] zone_in: ${event.item}`);
+      console.log(`    [${i+1}] next:`, nextEvent1);
+      console.log(`    [${i+2}] next+2:`, nextEvent2);
+
+      if (nextEvent1 && nextEvent2) {
+        const isValidSequence = 
+          nextEvent1.type === "zone_out" &&
+          nextEvent1.item === event.item &&
+          nextEvent2.type === "counted_pass" &&
+          nextEvent2.item === event.item &&
+          nextEvent2.direction === "downward_pass";
+
+        if (isValidSequence) {
+          // Valid sequence! Count it
+          const item = event.item;
+          currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
+          currentSession.validSequences++;
+          console.log(`  ✅ VALID sequence for ${item} - counted! Now at ${currentSession.counts[item]}`);
+        } else {
+          currentSession.invalidSequences++;
+          console.log(`  ❌ INVALID sequence for ${event.item}`);
+          console.log(`    Reason: ${
+            nextEvent1?.type !== "zone_out" ? "next is not zone_out" :
+            nextEvent1?.item !== event.item ? "item mismatch at zone_out" :
+            nextEvent2?.type !== "counted_pass" ? "next+2 is not counted_pass" :
+            nextEvent2?.item !== event.item ? "item mismatch at counted_pass" :
+            nextEvent2?.direction !== "downward_pass" ? "not downward_pass" :
+            "unknown"
+          }`);
+        }
       } else {
-        console.log(`Skipped non-downward pass: ${event.direction}`);
+        console.log(`  ⚠️ Incomplete sequence for ${event.item} (missing next events)`);
       }
-    }
-    else if (currentSession) {
-      // Track other event types for debugging
-      currentSession.totalEvents++;
     }
   }
 
@@ -408,7 +432,7 @@ function renderSession(session) {
         </thead>
         <tbody>
           ${Object.entries(session.counts)
-            .sort((a, b) => a[0].localeCompare(b[0])) // Sort alphabetically
+            .sort((a, b) => a[0].localeCompare(b[0]))
             .map(([item, count]) => `
               <tr>
                 <td class="item-name">${item}</td>
@@ -422,16 +446,16 @@ function renderSession(session) {
         </tbody>
       </table>
       <div class="debug-info">
-        Total events processed: ${session.totalEvents || 0} | 
-        Counted passes (downward): ${session.countedPasses || 0}
+        Valid sequences (IN→OUT→downward): ${session.validSequences || 0} | 
+        Invalid sequences: ${session.invalidSequences || 0}
       </div>
     `;
   } else {
     countsHTML = `
-      <div class="no-counts">No complete passes in this session</div>
+      <div class="no-counts">No valid IN→OUT→downward_pass sequences in this session</div>
       <div class="debug-info">
-        Total events processed: ${session.totalEvents || 0} | 
-        Counted passes (downward): ${session.countedPasses || 0}
+        Valid sequences: ${session.validSequences || 0} | 
+        Invalid sequences: ${session.invalidSequences || 0}
       </div>
     `;
   }

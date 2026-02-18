@@ -346,7 +346,8 @@ function parseSessions(events) {
         stopTime: null,
         counts: {},
         validSequences: 0,
-        invalidSequences: 0
+        inEvents: 0,
+        outEvents: 0
       };
       console.log("Started new session at", event.time);
     } 
@@ -359,43 +360,34 @@ function parseSessions(events) {
       }
     }
     else if (event.type === "zone_in" && currentSession) {
-      // Check if next 2 events form valid sequence: IN → OUT → downward_pass
-      const nextEvent1 = events[i + 1];
-      const nextEvent2 = events[i + 2];
+      currentSession.inEvents++;
+      console.log(`  Zone IN: ${event.item}`);
+    }
+    else if (event.type === "zone_out" && currentSession) {
+      currentSession.outEvents++;
+      
+      // Check if next event is the counted confirmation
+      const nextEvent = events[i + 1];
+      
+      console.log(`  Zone OUT: ${event.item}`);
+      console.log(`    [${i}] zone_out: ${event.item}`);
+      console.log(`    [${i+1}] next:`, nextEvent);
 
-      console.log(`  Checking sequence for ${event.item}:`);
-      console.log(`    [${i}] zone_in: ${event.item}`);
-      console.log(`    [${i+1}] next:`, nextEvent1);
-      console.log(`    [${i+2}] next+2:`, nextEvent2);
-
-      if (nextEvent1 && nextEvent2) {
-        const isValidSequence = 
-          nextEvent1.type === "zone_out" &&
-          nextEvent1.item === event.item &&
-          nextEvent2.type === "counted_pass" &&
-          nextEvent2.item === event.item &&
-          nextEvent2.direction === "downward_pass";
-
-        if (isValidSequence) {
-          // Valid sequence! Count it
-          const item = event.item;
-          currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
-          currentSession.validSequences++;
-          console.log(`  ✅ VALID sequence for ${item} - counted! Now at ${currentSession.counts[item]}`);
-        } else {
-          currentSession.invalidSequences++;
-          console.log(`  ❌ INVALID sequence for ${event.item}`);
-          console.log(`    Reason: ${
-            nextEvent1?.type !== "zone_out" ? "next is not zone_out" :
-            nextEvent1?.item !== event.item ? "item mismatch at zone_out" :
-            nextEvent2?.type !== "counted_pass" ? "next+2 is not counted_pass" :
-            nextEvent2?.item !== event.item ? "item mismatch at counted_pass" :
-            nextEvent2?.direction !== "downward_pass" ? "not downward_pass" :
-            "unknown"
-          }`);
-        }
+      if (nextEvent && 
+          nextEvent.type === "zone_out" &&
+          nextEvent.item === event.item &&
+          nextEvent.counted === true) {
+        
+        // Valid count!
+        const item = event.item;
+        currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
+        currentSession.validSequences++;
+        console.log(`  ✅ COUNTED: ${item} - Total now: ${currentSession.counts[item]}`);
+        
+        // Skip the next event since we've processed it
+        i++;
       } else {
-        console.log(`  ⚠️ Incomplete sequence for ${event.item} (missing next events)`);
+        console.log(`  ⚠️ OUT event without counted confirmation`);
       }
     }
   }
@@ -446,16 +438,18 @@ function renderSession(session) {
         </tbody>
       </table>
       <div class="debug-info">
-        Valid sequences (IN→OUT→downward): ${session.validSequences || 0} | 
-        Invalid sequences: ${session.invalidSequences || 0}
+        Counted passes: ${session.validSequences || 0} | 
+        IN events: ${session.inEvents || 0} | 
+        OUT events: ${session.outEvents || 0}
       </div>
     `;
   } else {
     countsHTML = `
-      <div class="no-counts">No valid IN→OUT→downward_pass sequences in this session</div>
+      <div class="no-counts">No counted passes in this session</div>
       <div class="debug-info">
-        Valid sequences: ${session.validSequences || 0} | 
-        Invalid sequences: ${session.invalidSequences || 0}
+        Counted passes: ${session.validSequences || 0} | 
+        IN events: ${session.inEvents || 0} | 
+        OUT events: ${session.outEvents || 0}
       </div>
     `;
   }

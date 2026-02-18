@@ -1,0 +1,789 @@
+[
+    {
+        "id": "ccc7be52a837980a",
+        "type": "tab",
+        "label": "Object Counting (Controlled)",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "d3187edeae5c5797",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Run Control",
+        "func": "if (msg.topic !== \"ui_command\") {\n    return null;\n}\n\nif (msg.payload === \"start\") {\n    flow.set(\"isRunning\", true);\n    return {\n        payload: \"start\",\n        status: \"🟢 Running\"\n    };\n}\n\nif (msg.payload === \"stop\") {\n    flow.set(\"isRunning\", false);\n    return {\n        payload: \"stop\",\n        status: \"🔴 Stopped\"\n    };\n}\n\nif (msg.payload === \"reset\") {\n    // Send reset to line cross counter\n    return {\n        topic: \"line_cross\",\n        payload: { reset: true }\n    };\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 400,
+        "wires": [
+            [
+                "f865f49fa3438170",
+                "617637212830f7e6",
+                "7b23f5597fd3dc71",
+                "20fbac9f283e0d39"
+            ]
+        ]
+    },
+    {
+        "id": "f865f49fa3438170",
+        "type": "ui-text",
+        "z": "ccc7be52a837980a",
+        "group": "ui_group_control",
+        "order": 3,
+        "width": "",
+        "height": "",
+        "name": "",
+        "label": "Status",
+        "format": "{{msg.payload}}",
+        "layout": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "wrapText": false,
+        "className": "",
+        "x": 570,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "2ac0aab9247948c0",
+        "type": "ui-template",
+        "z": "ccc7be52a837980a",
+        "group": "ui_group_control",
+        "page": "",
+        "ui": "",
+        "name": "Count Ui",
+        "order": 0,
+        "width": "0",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"root\">\n    <!-- CAMERA FEED -->\n    <div class=\"camera\">\n      <svg ref=\"svg\"></svg>\n    </div>\n\n    <!-- RESULT PANEL -->\n    <div class=\"result-panel\">\n      <h3>Conveyor Counter</h3>\n\n      <!-- COUNTS DISPLAY -->\n      <div class=\"count-display\">\n        <div class=\"total-count\">\n          <div class=\"count-box\">\n            <span class=\"label\">BAGS PASSED</span>\n            <span class=\"number\">{{ totalPassed }}</span>\n          </div>\n        </div>\n\n        <div v-if=\"lastPass\" class=\"last-event\">\n          Last Pass: <strong>{{ lastPass.label }}</strong>\n          <span style=\"font-size: 11px; color: #666;\">\n            {{ lastPass.time }}\n          </span>\n        </div>\n\n        <!-- BREAKDOWN BY CLASS -->\n        <div class=\"breakdown-full\">\n          <h4>Breakdown by Type</h4>\n          <div v-for=\"(count, cls) in passedCounts\" :key=\"cls\" class=\"detail-item\">\n            <span class=\"class-name\">{{ cls }}</span>: <strong>{{ count }}</strong>\n          </div>\n          <div v-if=\"Object.keys(passedCounts).length === 0\" class=\"empty\">No items passed yet</div>\n        </div>\n\n        <!-- ACTIVE TRACKING -->\n        <div class=\"tracking-status\">\n          <h4>Currently Tracked (IN zone)</h4>\n          <div v-for=\"(obj, key) in activeObjects\" :key=\"key\" class=\"tracked-item\">\n            {{ obj.label }}\n            <span style=\"color: #ff9800; font-size: 10px;\">⏳ in zone</span>\n          </div>\n          <div v-if=\"Object.keys(activeObjects).length === 0\" class=\"empty\">No active items</div>\n        </div>\n      </div>\n\n      <!-- LINE POSITION CONTROL -->\n      <div style=\"padding: 10px; background: white; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;\">\n        <strong style=\"font-size: 12px;\">Line Position: Y = {{ lineY }}</strong><br>\n        <button @click=\"adjustLine(-50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">⬆ UP</button>\n        <button @click=\"adjustLine(50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">⬇ DOWN</button>\n      </div>\n\n      <!-- DETECTION LOG -->\n      <div style=\"padding: 10px; background: #f0f0f0; margin-top: 10px; max-height: 150px; overflow-y: auto;\">\n        <h4 style=\"margin: 0 0 5px 0; font-size: 12px;\">Recent Events:</h4>\n        <div v-for=\"(log, i) in logs\" :key=\"i\" style=\"font-size: 11px; padding: 2px; font-family: monospace;\">\n          {{ log }}\n        </div>\n      </div>\n    </div>\n\n    <!-- CONTROLS -->\n    <div class=\"panel\">\n      <div class=\"buttons\">\n        <button class=\"start\" @click=\"sendCmd('start')\">▶ START</button>\n        <button class=\"stop\" @click=\"sendCmd('stop')\">⏹ STOP</button>\n        <button class=\"reset\" @click=\"resetCounts\">🔄 RESET</button>\n      </div>\n      <p class=\"status\">Camera: {{ wsStatus }}</p>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n  data() {\n    return {\n      ws: null,\n      wsStatus: \"Disconnected\",\n      isDrawing: false,\n\n      svgWidth: 640,\n      svgHeight: 640,\n      lineY: 300,\n\n      trackedObjects: {},\n      \n      // PASS-THROUGH TRACKING\n      activeObjects: {},\n      totalPassed: 0,\n      passedCounts: {},\n      lastPass: null,\n      \n      logs: [],\n      \n      // Performance optimization\n      lastImageUpdate: 0,\n      imageUpdateInterval: 33, // ~30fps max for image updates\n      lineElement: null,\n      labelElement: null,\n      imageElement: null,\n      processingFrame: false\n    };\n  },\n\n  methods: {\n    addLog(msg) {\n      const time = new Date().toLocaleTimeString();\n      this.logs.unshift(`[${time}] ${msg}`);\n      if (this.logs.length > 15) this.logs.pop();\n    },\n\n    resetCounts() {\n      this.totalPassed = 0;\n      this.passedCounts = {};\n      this.activeObjects = {};\n      this.trackedObjects = {};\n      this.lastPass = null;\n      this.logs = [];\n      this.addLog(\"🔄 Counter reset\");\n      \n      this.send({ topic: \"line_cross\", payload: { reset: true } });\n    },\n\n    sendCmd(cmd) {\n      this.send({ topic: \"ui_command\", payload: cmd });\n\n      if (cmd === \"start\") {\n        this.isDrawing = true;\n        this.addLog(\"▶ Started counting\");\n      }\n\n      if (cmd === \"stop\") {\n        this.isDrawing = false;\n        this.addLog(\"⏹ Stopped counting\");\n      }\n    },\n\n    adjustLine(delta) {\n      this.lineY += delta;\n      this.updateCountingLine();\n    },\n\n    initWS() {\n      this.ws = new WebSocket(`ws://${window.location.hostname}:8090`);\n      this.ws.binaryType = \"arraybuffer\";\n\n      this.ws.onopen = () => {\n        this.wsStatus = \"Connected\";\n        this.addLog(\"✅ WebSocket connected\");\n      };\n      \n      this.ws.onclose = () => {\n        this.wsStatus = \"Disconnected\";\n        this.addLog(\"❌ WebSocket disconnected\");\n      };\n\n      this.ws.onmessage = (e) => {\n        // Skip if already processing a frame\n        if (this.processingFrame) return;\n        \n        this.processingFrame = true;\n        \n        try {\n          const json = JSON.parse(\n            new TextDecoder().decode(new Uint8Array(e.data))\n          );\n          const data = json.data || json;\n\n          // Throttle image updates for better performance\n          const now = Date.now();\n          if (now - this.lastImageUpdate >= this.imageUpdateInterval) {\n            this.renderImage(data);\n            this.lastImageUpdate = now;\n          }\n\n          // Always process detection logic (this is fast)\n          if (this.isDrawing) {\n            this.checkLineCrossing(data);\n          }\n        } catch (err) {\n          console.error(\"WS parse error:\", err);\n        } finally {\n          this.processingFrame = false;\n        }\n      };\n    },\n\n    renderImage(data) {\n      if (!data?.image || !data?.resolution) return;\n\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      // Cache resolution if changed\n      if (this.svgWidth !== data.resolution[0] || this.svgHeight !== data.resolution[1]) {\n        this.svgWidth = data.resolution[0];\n        this.svgHeight = data.resolution[1];\n        svg.setAttribute(\"viewBox\", `0 0 ${this.svgWidth} ${this.svgHeight}`);\n      }\n\n      // Reuse image element\n      if (!this.imageElement) {\n        this.imageElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"image\");\n        this.imageElement.setAttribute(\"x\", 0);\n        this.imageElement.setAttribute(\"y\", 0);\n        svg.appendChild(this.imageElement);\n      }\n\n      this.imageElement.setAttribute(\"width\", this.svgWidth);\n      this.imageElement.setAttribute(\"height\", this.svgHeight);\n      this.imageElement.setAttribute(\"href\", `data:image/jpeg;base64,${data.image}`);\n\n      // Draw line if not exists\n      if (!this.lineElement) {\n        this.drawCountingLine();\n      }\n    },\n\n    drawCountingLine() {\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      // Create line element once\n      if (!this.lineElement) {\n        this.lineElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"line\");\n        this.lineElement.setAttribute(\"id\", \"counting-line\");\n        this.lineElement.setAttribute(\"stroke\", \"#ff3333\");\n        this.lineElement.setAttribute(\"stroke-width\", 4);\n        this.lineElement.setAttribute(\"stroke-dasharray\", \"10,5\");\n        svg.appendChild(this.lineElement);\n      }\n\n      // Create label element once\n      if (!this.labelElement) {\n        this.labelElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"text\");\n        this.labelElement.setAttribute(\"id\", \"line-label\");\n        this.labelElement.setAttribute(\"x\", 10);\n        this.labelElement.setAttribute(\"fill\", \"#ff3333\");\n        this.labelElement.setAttribute(\"font-size\", 18);\n        this.labelElement.setAttribute(\"font-weight\", \"bold\");\n        svg.appendChild(this.labelElement);\n      }\n\n      this.updateCountingLine();\n    },\n\n    updateCountingLine() {\n      if (!this.lineElement || !this.labelElement) return;\n\n      // Update line position\n      this.lineElement.setAttribute(\"x1\", 0);\n      this.lineElement.setAttribute(\"y1\", this.lineY);\n      this.lineElement.setAttribute(\"x2\", this.svgWidth);\n      this.lineElement.setAttribute(\"y2\", this.lineY);\n\n      // Update label\n      this.labelElement.setAttribute(\"y\", this.lineY - 10);\n      this.labelElement.textContent = ``;\n    },\n\n    checkLineCrossing(data) {\n      if (!Array.isArray(data?.boxes) || data.boxes.length === 0) return;\n\n      const PROXIMITY = 100;\n      const ZONE_THRESHOLD = this.lineY;\n      const now = Date.now();\n\n      // Process all boxes\n      data.boxes.forEach(([x, y, w, h, score, cls]) => {\n        const label = data.labels?.[cls] ?? `ID-${cls}`;\n        let matchedKey = null;\n\n        // Find existing tracked object (optimized loop)\n        for (const key in this.trackedObjects) {\n          const obj = this.trackedObjects[key];\n          if (obj.label === label) {\n            const dx = x - obj.x;\n            const dy = y - obj.y;\n            const distSq = dx * dx + dy * dy; // Skip sqrt for performance\n            if (distSq < PROXIMITY * PROXIMITY) {\n              matchedKey = key;\n              break;\n            }\n          }\n        }\n\n        const key = matchedKey || `${label}_${now}_${Math.random().toString(36).slice(2, 6)}`;\n\n        // Determine current zone\n        const currentZone = y < ZONE_THRESHOLD ? \"in\" : \"out\";\n\n        // SIMPLIFIED ZONE-BASED COUNTING\n        if (currentZone === \"in\") {\n          // Object entered IN zone (above line)\n          if (!this.activeObjects[key]) {\n            this.activeObjects[key] = { label, enteredAt: now };\n            this.addLog(`🟢 IN: ${label} (y=${y.toFixed(0)})`);\n            \n            this.send({\n              topic: \"line_cross\",\n              payload: { class: label, direction: \"in\" }\n            });\n          }\n        } else if (currentZone === \"out\") {\n          // Object moved to OUT zone (below line)\n          if (this.activeObjects[key]) {\n            // COUNT IT!\n            this.totalPassed++;\n            this.passedCounts[label] = (this.passedCounts[label] || 0) + 1;\n            \n            this.lastPass = {\n              label: label,\n              time: new Date().toLocaleTimeString()\n            };\n            \n            this.addLog(`✅ COUNTED: ${label} (Total: ${this.totalPassed})`);\n            \n            // Remove from active\n            delete this.activeObjects[key];\n            \n            this.send({\n              topic: \"line_cross\",\n              payload: { \n                class: label, \n                direction: \"out\",\n                counted: true,\n                total: this.totalPassed\n              }\n            });\n          }\n        }\n\n        // Update tracked position\n        this.trackedObjects[key] = { x, y, label, lastSeen: now };\n      });\n\n      // Cleanup stale objects (run less frequently)\n      if (now % 1000 < 50) { // Roughly once per second\n        for (const key in this.trackedObjects) {\n          if (now - this.trackedObjects[key].lastSeen > 5000) {\n            delete this.trackedObjects[key];\n            \n            if (this.activeObjects[key]) {\n              delete this.activeObjects[key];\n            }\n          }\n        }\n      }\n    },\n  },\n\n  mounted() {\n    this.initWS();\n  },\n\n  unmounted() {\n    if (this.ws) this.ws.close();\n  },\n};\n</script>\n\n<style>\n  .root {\n    display: grid;\n    grid-template-columns: 1fr 350px;\n    grid-template-rows: 1fr auto;\n    width: 100%;\n    height: 100%;\n    gap: 0;\n  }\n\n  .camera {\n    grid-column: 1;\n    grid-row: 1 / 3;\n    background: black;\n  }\n\n  .camera svg {\n    width: 100%;\n    height: 100%;\n  }\n\n  .result-panel {\n    grid-column: 2;\n    grid-row: 1;\n    padding: 15px;\n    background: #f9f9f9;\n    border-left: 2px solid #ddd;\n    overflow-y: auto;\n  }\n\n  .result-panel h3 {\n    margin: 0 0 15px 0;\n    color: #333;\n    font-size: 18px;\n  }\n\n  .count-display {\n    display: flex;\n    flex-direction: column;\n    gap: 15px;\n  }\n\n  .total-count {\n    display: flex;\n    justify-content: center;\n  }\n\n  .count-box {\n    padding: 20px;\n    border-radius: 8px;\n    text-align: center;\n    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n    border: 3px solid #5a67d8;\n    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);\n    width: 100%;\n  }\n\n  .count-box .label {\n    display: block;\n    font-size: 14px;\n    color: #fff;\n    font-weight: bold;\n    letter-spacing: 1px;\n  }\n\n  .count-box .number {\n    display: block;\n    font-size: 48px;\n    font-weight: bold;\n    margin-top: 5px;\n    color: #fff;\n  }\n\n  .last-event {\n    padding: 10px;\n    background: #d4edda;\n    border-radius: 4px;\n    font-size: 13px;\n    border: 1px solid #28a745;\n    text-align: center;\n  }\n\n  .breakdown-full {\n    padding: 12px;\n    background: white;\n    border-radius: 4px;\n    border: 1px solid #e0e0e0;\n  }\n\n  .breakdown-full h4 {\n    margin: 0 0 10px 0;\n    font-size: 14px;\n    color: #666;\n  }\n\n  .detail-item {\n    padding: 6px 0;\n    font-size: 13px;\n    border-bottom: 1px solid #f0f0f0;\n  }\n\n  .detail-item:last-child {\n    border-bottom: none;\n  }\n\n  .class-name {\n    color: #667eea;\n    font-weight: 600;\n  }\n\n  .tracking-status {\n    padding: 12px;\n    background: #fff3cd;\n    border-radius: 4px;\n    border: 1px solid #ffc107;\n  }\n\n  .tracking-status h4 {\n    margin: 0 0 8px 0;\n    font-size: 13px;\n    color: #856404;\n  }\n\n  .tracked-item {\n    padding: 4px 0;\n    font-size: 12px;\n    color: #856404;\n  }\n\n  .empty {\n    color: #999;\n    font-size: 11px;\n    font-style: italic;\n  }\n\n  .panel {\n    grid-column: 2;\n    grid-row: 2;\n    padding: 14px;\n    background: #f5f5f5;\n    border-left: 2px solid #ddd;\n    border-top: 2px solid #ddd;\n  }\n\n  .buttons {\n    display: flex;\n    gap: 8px;\n  }\n\n  button {\n    flex: 1;\n    padding: 10px;\n    font-weight: bold;\n    border: none;\n    cursor: pointer;\n    border-radius: 4px;\n    font-size: 12px;\n  }\n\n  .start {\n    background: #4caf50;\n    color: white;\n  }\n\n  .stop {\n    background: #f44336;\n    color: white;\n  }\n\n  .reset {\n    background: #ff9800;\n    color: white;\n  }\n\n  .status {\n    margin-top: 8px;\n    font-size: 12px;\n    color: #666;\n  }\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 160,
+        "y": 200,
+        "wires": [
+            [
+                "b6a361aa5b2f3a6e",
+                "d3187edeae5c5797"
+            ]
+        ]
+    },
+    {
+        "id": "0072e8cc3242535c",
+        "type": "file",
+        "z": "ccc7be52a837980a",
+        "name": "Append History Log",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 910,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "617637212830f7e6",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Log Start",
+        "func": "if (msg.status !== \"🟢 Running\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_start\",\n    time: now,\n    event: \"counting_started\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 400,
+        "wires": [
+            [
+                "0072e8cc3242535c"
+            ]
+        ]
+    },
+    {
+        "id": "7b23f5597fd3dc71",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Log Stop",
+        "func": "if (msg.status !== \"🔴 Stopped\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_stop\",\n    time: now,\n    event: \"counting_stopped\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 340,
+        "wires": [
+            [
+                "0072e8cc3242535c"
+            ]
+        ]
+    },
+    {
+        "id": "9e753737c23f8281",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Supabase Header",
+        "func": "const SUPABASE_ANON_KEY = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoaW1ma3hzcGpjc3ZkZ2t4bGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjMwMDEsImV4cCI6MjA4NDUzOTAwMX0.k8QsBec2NsozPdj-9JR1oOb6XTagz8oATq98G6Vsmog\";\n\nmsg.headers = {\n    \"Authorization\": `Bearer ${SUPABASE_ANON_KEY}`,\n    \"apikey\": SUPABASE_ANON_KEY,\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 1620,
+        "wires": [
+            [
+                "2efe7dd6e2a3b404"
+            ]
+        ]
+    },
+    {
+        "id": "5f909176b9608026",
+        "type": "inject",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 90,
+        "y": 1600,
+        "wires": [
+            [
+                "f3b83353360f1b6f"
+            ]
+        ]
+    },
+    {
+        "id": "2efe7dd6e2a3b404",
+        "type": "http request",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 700,
+        "y": 1620,
+        "wires": [
+            [
+                "11b98c62b74f7687"
+            ]
+        ]
+    },
+    {
+        "id": "11b98c62b74f7687",
+        "type": "debug",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 1700,
+        "wires": []
+    },
+    {
+        "id": "339f624e14564f49",
+        "type": "file in",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Read file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 440,
+        "y": 1680,
+        "wires": [
+            [
+                "9e753737c23f8281"
+            ]
+        ]
+    },
+    {
+        "id": "f3b83353360f1b6f",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Build Supabase Request",
+        "func": "// Build today's filename\nconst today = new Date().toISOString().split(\"T\")[0];\nconst filename = `history_log_${today}.jsonl`;\n\n// Local file path\nmsg.filename = `/home/recamera/logs/${filename}`;\n\n// Supabase upload URL\nmsg.url = `https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/history/${filename}`;\n\n// HTTP method\nmsg.method = \"PUT\";\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 1700,
+        "wires": [
+            [
+                "339f624e14564f49"
+            ]
+        ]
+    },
+    {
+        "id": "a149ed53fbc750a8",
+        "type": "switch",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "START triggers bulk upload",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "start",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 380,
+        "y": 1360,
+        "wires": [
+            [
+                "015a8d5c9b9b31cc"
+            ]
+        ]
+    },
+    {
+        "id": "015a8d5c9b9b31cc",
+        "type": "exec",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "command": "ls /home/recamera/logs/*.jsonl",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "List all jsonl logs",
+        "x": 80,
+        "y": 1440,
+        "wires": [
+            [
+                "76d3b0132ad781d2"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "76d3b0132ad781d2",
+        "type": "split",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Split filenames",
+        "splt": "",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 280,
+        "y": 1460,
+        "wires": [
+            [
+                "d0b67d70184761c8"
+            ]
+        ]
+    },
+    {
+        "id": "d0b67d70184761c8",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Build upload request",
+        "func": "const path = msg.payload.trim();\nif (!path) return null;\n\nconst filename = path.split(\"/\").pop();\n\n// Skip if this is not a .jsonl file\nif (!filename.endsWith('.jsonl')) return null;\n\n// Store original filename for reading\nmsg.filename = path;\n\n// Supabase storage upload endpoint\nmsg.url = `https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/history/${filename}`;\n\n// Use POST for new files, will be converted to upsert by header\nmsg.method = \"POST\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 1520,
+        "wires": [
+            [
+                "7ac881d87aa1bfab"
+            ]
+        ]
+    },
+    {
+        "id": "7ac881d87aa1bfab",
+        "type": "file in",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Read file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 500,
+        "y": 1460,
+        "wires": [
+            [
+                "fd7e6752fee7b655"
+            ]
+        ]
+    },
+    {
+        "id": "fd7e6752fee7b655",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Supabase headers",
+        "func": "const KEY = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoaW1ma3hzcGpjc3ZkZ2t4bGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjMwMDEsImV4cCI6MjA4NDUzOTAwMX0.k8QsBec2NsozPdj-9JR1oOb6XTagz8oATq98G6Vsmog\";\n\nmsg.headers = {\n  \"Authorization\": `Bearer ${KEY}`,\n  \"apikey\": KEY,\n  \"Content-Type\": \"application/json\",\n  \"x-upsert\": \"true\"\n};\n\n// Add info for debugging\nmsg.uploadInfo = {\n  filename: msg.filename,\n  url: msg.url,\n  fileSize: msg.payload ? msg.payload.length : 0\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 1540,
+        "wires": [
+            [
+                "a4b058331be5c55c"
+            ]
+        ]
+    },
+    {
+        "id": "a4b058331be5c55c",
+        "type": "http request",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Upload to Supabase",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 720,
+        "y": 1440,
+        "wires": [
+            [
+                "17d987e1075e17fe"
+            ]
+        ]
+    },
+    {
+        "id": "17d987e1075e17fe",
+        "type": "debug",
+        "z": "ccc7be52a837980a",
+        "d": true,
+        "name": "Bulk upload result",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 810,
+        "y": 1500,
+        "wires": []
+    },
+    {
+        "id": "fa1efc2b9d38b861",
+        "type": "camera",
+        "z": "ccc7be52a837980a",
+        "client": "9d4b3a6a5e8eaea6",
+        "audio": false,
+        "volume": "50",
+        "x": 120,
+        "y": 80,
+        "wires": [
+            [
+                "8350be7515aeeab6"
+            ]
+        ]
+    },
+    {
+        "id": "8350be7515aeeab6",
+        "type": "model",
+        "z": "ccc7be52a837980a",
+        "name": "",
+        "uri": "",
+        "model": "yolo11n_layss_int8.cvimodel",
+        "tscore": "0.3",
+        "tiou": "0.3",
+        "debug": false,
+        "trace": false,
+        "counting": false,
+        "draw": false,
+        "classes": "",
+        "splitter": "0,0,0,0",
+        "previewResolution": "auto",
+        "previewFps": "30",
+        "client": "9d4b3a6a5e8eaea6",
+        "x": 290,
+        "y": 80,
+        "wires": [
+            [
+                "2ac0aab9247948c0"
+            ]
+        ]
+    },
+    {
+        "id": "b6a361aa5b2f3a6e",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Line Cross Counter",
+        "func": "// Line Cross Counter - TRACKS IN, OUT, AND DOWNWARD_PASS\nif (msg.topic !== \"line_cross\") return [null, null];\n\n// Handle reset\nif (msg.payload.reset) {\n    flow.set(\"lineCrossCounts\", { in: {}, out: {}, counted: {} });\n    flow.set(\"lastTriggerTime\", {});\n    return [\n        { \n            payload: { \n                in: {}, \n                out: {}, \n                counted: {},\n                totalIn: 0, \n                totalOut: 0, \n                totalCounted: 0,\n                text: \"RESET\" \n            } \n        }, \n        null\n    ];\n}\n\nconst store = flow.get(\"lineCrossCounts\") || { in: {}, out: {}, counted: {} };\nconst cooldowns = flow.get(\"lastTriggerTime\") || {};\n\nconst { class: className, direction, counted, total } = msg.payload;\nif (!direction) return [null, null];\n\nconst now = Date.now();\n\n// Build log entry\nlet logMsg = null;\n\n// Handle different event types\nif (direction === \"downward_pass\") {\n    // DOWNWARD PASS = ACTUAL COUNT\n    const key = `${className}_counted`;\n    \n    // Debounce (500ms for counts to avoid double counting)\n    if (now - (cooldowns[key] || 0) < 500) return [null, null];\n    \n    cooldowns[key] = now;\n    store.counted[className] = (store.counted[className] || 0) + 1;\n    \n    // Log the actual count\n    logMsg = {\n        filename: `/home/recamera/logs/linecross_log_${new Date().toISOString().split(\"T\")[0]}.jsonl`,\n        payload: {\n            type: \"counted_pass\",\n            time: new Date().toISOString(),\n            item: className,\n            direction: \"downward_pass\",\n            total: total || store.counted[className]\n        }\n    };\n    \n} else if (direction === \"in\" || direction === \"out\") {\n    // IN/OUT ZONE TRACKING\n    const key = `${className}_${direction}`;\n    \n    // Debounce (300ms for zone events)\n    if (now - (cooldowns[key] || 0) < 300) return [null, null];\n    \n    cooldowns[key] = now;\n    store[direction][className] = (store[direction][className] || 0) + 1;\n    \n    // Log zone entry/exit\n    logMsg = {\n        filename: `/home/recamera/logs/linecross_log_${new Date().toISOString().split(\"T\")[0]}.jsonl`,\n        payload: {\n            type: `zone_${direction}`,\n            time: new Date().toISOString(),\n            item: className,\n            direction: direction\n        }\n    };\n}\n\nflow.set(\"lineCrossCounts\", store);\nflow.set(\"lastTriggerTime\", cooldowns);\n\n// Calculate totals\nconst totalIn = Object.values(store.in).reduce((a, b) => a + b, 0);\nconst totalOut = Object.values(store.out).reduce((a, b) => a + b, 0);\nconst totalCounted = Object.values(store.counted).reduce((a, b) => a + b, 0);\n\n// Build text for UI\nlet text = `IN: ${totalIn} | OUT: ${totalOut} | COUNTED: ${totalCounted}\\nLast: ${className} (${direction.toUpperCase()})`;\n\n// Send structured data for UI\nreturn [\n    { \n        payload: {\n            in: store.in,\n            out: store.out,\n            counted: store.counted,\n            totalIn,\n            totalOut,\n            totalCounted,\n            lastClass: className,\n            lastDirection: direction,\n            text\n        }\n    }, \n    logMsg\n];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 160,
+        "wires": [
+            [
+                "2ac0aab9247948c0"
+            ],
+            [
+                "0072e8cc3242535c"
+            ]
+        ]
+    },
+    {
+        "id": "20fbac9f283e0d39",
+        "type": "switch",
+        "z": "ccc7be52a837980a",
+        "name": "START triggers bulk upload",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "stop",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 480,
+        "y": 620,
+        "wires": [
+            [
+                "4de6c56471bc7d62"
+            ]
+        ]
+    },
+    {
+        "id": "4de6c56471bc7d62",
+        "type": "exec",
+        "z": "ccc7be52a837980a",
+        "command": "ls /home/recamera/logs/*.jsonl 2>/dev/null || echo ''",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "List all jsonl logs",
+        "x": 140,
+        "y": 720,
+        "wires": [
+            [
+                "dce4572b11a08839"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "dce4572b11a08839",
+        "type": "split",
+        "z": "ccc7be52a837980a",
+        "name": "Split filenames",
+        "splt": "\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 380,
+        "y": 720,
+        "wires": [
+            [
+                "dfb53d6b1b05afd5"
+            ]
+        ]
+    },
+    {
+        "id": "dfb53d6b1b05afd5",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Build upload request",
+        "func": "const path = msg.payload.trim();\nif (!path || path === '') return null;\n\nconst filename = path.split(\"/\").pop();\n\n// Skip if not a .jsonl file\nif (!filename.endsWith('.jsonl')) return null;\n\nmsg.filename = path;\nmsg.url = `https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/history/${filename}`;\nmsg.method = \"POST\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 780,
+        "wires": [
+            [
+                "2320af5ff193be67"
+            ]
+        ]
+    },
+    {
+        "id": "2320af5ff193be67",
+        "type": "file in",
+        "z": "ccc7be52a837980a",
+        "name": "Read file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "chunk": false,
+        "sendError": true,
+        "encoding": "utf8",
+        "allProps": false,
+        "x": 600,
+        "y": 720,
+        "wires": [
+            [
+                "8e56cb94faf19b97"
+            ]
+        ]
+    },
+    {
+        "id": "8e56cb94faf19b97",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Supabase headers",
+        "func": "const KEY = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoaW1ma3hzcGpjc3ZkZ2t4bGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjMwMDEsImV4cCI6MjA4NDUzOTAwMX0.k8QsBec2NsozPdj-9JR1oOb6XTagz8oATq98G6Vsmog\";\n\nmsg.headers = {\n  \"Authorization\": `Bearer ${KEY}`,\n  \"apikey\": KEY,\n  \"Content-Type\": \"application/json\",\n  \"x-upsert\": \"true\"\n};\n\nconst filename = msg.filename.split('/').pop();\nmsg.uploadInfo = {\n  filename: filename,\n  url: msg.url,\n  size: msg.payload ? msg.payload.length : 0\n};\n\nnode.warn(`Uploading ${filename} (${msg.uploadInfo.size} bytes)`);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 800,
+        "wires": [
+            [
+                "3910dc8b6d358254"
+            ]
+        ]
+    },
+    {
+        "id": "3910dc8b6d358254",
+        "type": "http request",
+        "z": "ccc7be52a837980a",
+        "name": "Upload to Supabase",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 820,
+        "y": 700,
+        "wires": [
+            [
+                "a29cf2d661b0e765"
+            ]
+        ]
+    },
+    {
+        "id": "a29cf2d661b0e765",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Parse Upload Response",
+        "func": "const statusCode = msg.statusCode;\nconst filename = msg.uploadInfo?.filename || 'unknown';\n\nif (statusCode === 200 || statusCode === 201) {\n    msg.uploadStatus = `✅ ${filename} uploaded`;\n} else if (statusCode === 409) {\n    msg.uploadStatus = `⚠️ ${filename} exists`;\n} else {\n    msg.uploadStatus = `❌ ${filename} failed (${statusCode}): ${msg.payload}`;\n}\n\nnode.warn(msg.uploadStatus);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_group_control",
+        "type": "ui-group",
+        "name": "Control",
+        "page": "ui_page_count",
+        "width": "8",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "9d4b3a6a5e8eaea6",
+        "type": "sscma",
+        "host": "localhost",
+        "mqttport": "1883",
+        "apiport": "80",
+        "clientid": "recamera",
+        "username": "",
+        "password": ""
+    },
+    {
+        "id": "ui_page_count",
+        "type": "ui-page",
+        "name": "Object Counting",
+        "ui": "9ab1ee429e233a80",
+        "path": "/counting",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "9ab1ee429e233a80",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true
+    },
+    {
+        "id": "234998f63c55af55",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094ce",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "1077d228478ffefe",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@flowfuse/node-red-dashboard": "1.26.0",
+            "node-red-contrib-sscma": "0.3.6"
+        }
+    }
+]

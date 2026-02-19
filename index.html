@@ -345,7 +345,8 @@ function parseSessions(events) {
         startTime: event.time,
         stopTime: null,
         counts: {},
-        validSequences: 0,
+        inZone: {}, // Track items currently in IN zone
+        totalCounted: 0,
         inEvents: 0,
         outEvents: 0
       };
@@ -359,35 +360,36 @@ function parseSessions(events) {
         currentSession = null;
       }
     }
-    else if (event.type === "zone_in" && currentSession) {
-      currentSession.inEvents++;
-      console.log(`  Zone IN: ${event.item}`);
-    }
-    else if (event.type === "zone_out" && currentSession) {
-      currentSession.outEvents++;
-      
-      // Check if next event is the counted confirmation
-      const nextEvent = events[i + 1];
-      
-      console.log(`  Zone OUT: ${event.item}`);
-      console.log(`    [${i}] zone_out: ${event.item}`);
-      console.log(`    [${i+1}] next:`, nextEvent);
-
-      if (nextEvent && 
-          nextEvent.type === "zone_out" &&
-          nextEvent.item === event.item &&
-          nextEvent.counted === true) {
-        
-        // Valid count!
+    else if (currentSession) {
+      if (event.type === "zone_in") {
+        // Item entered IN zone
         const item = event.item;
-        currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
-        currentSession.validSequences++;
-        console.log(`  ✅ COUNTED: ${item} - Total now: ${currentSession.counts[item]}`);
-        
-        // Skip the next event since we've processed it
-        i++;
-      } else {
-        console.log(`  ⚠️ OUT event without counted confirmation`);
+        if (item && item !== "") {
+          currentSession.inZone[item] = true;
+          currentSession.inEvents++;
+          console.log(`  🟢 IN: ${item} - Added to inZone`);
+        }
+      }
+      else if (event.type === "zone_out") {
+        // Item entered OUT zone
+        const item = event.item;
+        if (item && item !== "") {
+          currentSession.outEvents++;
+          
+          // Check if this item was previously in IN zone
+          if (currentSession.inZone[item]) {
+            // Same item moved from IN to OUT - COUNT IT!
+            currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
+            currentSession.totalCounted++;
+            
+            // Remove from inZone
+            delete currentSession.inZone[item];
+            
+            console.log(`  ✅ COUNTED: ${item} - Total now: ${currentSession.counts[item]}`);
+          } else {
+            console.log(`  ⚠️ OUT: ${item} - Not in inZone, skipped`);
+          }
+        }
       }
     }
   }
@@ -438,16 +440,16 @@ function renderSession(session) {
         </tbody>
       </table>
       <div class="debug-info">
-        Counted passes: ${session.validSequences || 0} | 
+        Total counted: ${session.totalCounted || 0} | 
         IN events: ${session.inEvents || 0} | 
         OUT events: ${session.outEvents || 0}
       </div>
     `;
   } else {
     countsHTML = `
-      <div class="no-counts">No counted passes in this session</div>
+      <div class="no-counts">No items counted (no IN→OUT sequences)</div>
       <div class="debug-info">
-        Counted passes: ${session.validSequences || 0} | 
+        Total counted: ${session.totalCounted || 0} | 
         IN events: ${session.inEvents || 0} | 
         OUT events: ${session.outEvents || 0}
       </div>

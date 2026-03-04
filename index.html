@@ -320,19 +320,16 @@
 
         if (lines.length === 0) throw new Error("Empty");
 
-        console.log(`Loaded ${lines.length} events`);
         const events = lines.map(line => JSON.parse(line));
-        console.log("Events:", events);
-
         const sessions = parseSessions(events);
-        console.log("Parsed sessions:", sessions);
 
         if (sessions.length === 0) {
           emptyDiv.style.display = "block";
           return;
         }
 
-        sessions.forEach(session => renderSession(session));
+        // Sort sessions to show newest at the top
+        sessions.reverse().forEach(session => renderSession(session));
 
       } catch (err) {
         console.error("Load error:", err);
@@ -348,49 +345,30 @@
         const event = events[i];
 
         if (event.type === "session_start") {
-          // If a session was already active but we see a new start, close the old one
-          if (currentSession) {
-            sessions.push(currentSession);
-          }
+          if (currentSession) sessions.push(currentSession);
 
           currentSession = {
             startTime: event.time,
             stopTime: null,
             counts: {},
-            totalCounted: 0,
-            passEvents: 0
+            totalCounted: 0
           };
-          console.log("Started new session at", event.time);
         }
-
         else if (event.type === "session_stop") {
           if (currentSession) {
             currentSession.stopTime = event.time;
-            console.log("Stopped session. Summary:", currentSession.counts);
             sessions.push(currentSession);
             currentSession = null;
           }
         }
-
         else if (currentSession && event.type === "counted_pass") {
-          const item = event.item || "(unknown)";
-          currentSession.passEvents++;
-
-          // Increment count for this specific item model/label
+          const item = event.item || "Unknown Item";
           currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
-
-          // Update the total for the current session
           currentSession.totalCounted++;
-
-          console.log(`  ✅ ${event.direction}: "${item}" - Session Total: ${currentSession.totalCounted}`);
         }
       }
 
-      // If the log ends while a session is still active
-      if (currentSession) {
-        sessions.push(currentSession);
-      }
-
+      if (currentSession) sessions.push(currentSession);
       return sessions;
     }
 
@@ -402,67 +380,35 @@
       const stopTime = session.stopTime ? formatDateTime(session.stopTime) : "Still running...";
       const duration = session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "—";
 
-      const totalCount = Object.values(session.counts).reduce((a, b) => a + b, 0);
+      // Generate Table Rows
+      const rows = Object.entries(session.counts)
+        .sort((a, b) => b[1] - a[1]) // Sort by highest count first
+        .map(([item, count]) => `
+      <tr>
+        <td class="item-name">${item}</td>
+        <td class="item-count">${count}</td>
+      </tr>
+    `).join("");
 
-      // Calculate items still in zone
-      const itemsInZone = Object.entries(session.inZoneMap || {})
-        .filter(([_, count]) => count > 0)
-        .reduce((sum, [_, count]) => sum + count, 0);
-
-      let countsHTML = "";
-      if (Object.keys(session.counts).length > 0) {
-        countsHTML = `
-      <table class="counts-table">
-        <thead>
-          <tr>
-            <th>Item Type</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${Object.entries(session.counts)
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([item, count]) => `
-              <tr>
-                <td class="item-name">${item}</td>
-                <td class="item-count">${count}</td>
-              </tr>
-            `).join("")}
-          <tr class="total-row">
-            <td>TOTAL</td>
-            <td class="item-count">${totalCount}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="debug-info">
-        Counted: ${session.totalCounted || 0} | 
-        IN events: ${session.inEvents || 0} | 
-        OUT events: ${session.outEvents || 0} | 
-        Still in zone: ${itemsInZone} | 
-        Skipped OUTs: ${session.skippedOuts || 0}
-      </div>
-    `;
-      } else {
-        countsHTML = `
-      <div class="no-counts">No items counted (no IN→OUT sequences)</div>
-      <div class="debug-info">
-        Counted: ${session.totalCounted || 0} | 
-        IN events: ${session.inEvents || 0} | 
-        OUT events: ${session.outEvents || 0} | 
-        Still in zone: ${itemsInZone} | 
-        Skipped OUTs: ${session.skippedOuts || 0}
-      </div>
-    `;
-      }
+      const tableHTML = rows ? `
+    <table class="counts-table">
+      <thead>
+        <tr><th>Item Type</th><th>Count</th></tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row">
+          <td>TOTAL</td>
+          <td class="item-count">${session.totalCounted}</td>
+        </tr>
+      </tbody>
+    </table>
+  ` : `<div class="no-counts">No items detected in this session.</div>`;
 
       sessionDiv.innerHTML = `
     <div class="session-header">
-      <div class="session-title">
-        Session ${session.stopTime ? '(Completed)' : '(Active)'}
-      </div>
-      <div class="session-duration">
-        Duration: ${duration}
-      </div>
+      <div class="session-title">Session ${session.stopTime ? '✓' : '▶'}</div>
+      <div class="session-duration">Duration: ${duration}</div>
     </div>
     <div class="session-content">
       <div class="session-times">
@@ -475,12 +421,17 @@
           <div class="time-value">${stopTime}</div>
         </div>
       </div>
-      ${countsHTML}
+      ${tableHTML}
+      <div class="debug-info">
+        Event Type: downward_pass | Total Detected: ${session.totalCounted}
+      </div>
     </div>
   `;
 
       sessionsDiv.appendChild(sessionDiv);
     }
+
+
 
     function formatDateTime(isoString) {
       if (!isoString) return "—";

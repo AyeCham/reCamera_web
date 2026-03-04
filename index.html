@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -76,8 +77,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
     }
 
     .sessions {
@@ -246,6 +254,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="container">
@@ -269,167 +278,140 @@
     </div>
   </div>
 
-<script>
-const SUPABASE_BASE = "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
+  <script>
+    const SUPABASE_BASE = "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
 
-const sessionsDiv = document.getElementById("sessions");
-const emptyDiv = document.getElementById("empty");
-const datePicker = document.getElementById("datePicker");
+    const sessionsDiv = document.getElementById("sessions");
+    const emptyDiv = document.getElementById("empty");
+    const datePicker = document.getElementById("datePicker");
 
-let refreshInterval;
+    let refreshInterval;
 
-// Set today as default
-const today = new Date().toISOString().split("T")[0];
-datePicker.value = today;
-loadDate(today);
+    // Set today as default
+    const today = new Date().toISOString().split("T")[0];
+    datePicker.value = today;
+    loadDate(today);
 
-// Start auto-refresh
-startAutoRefresh();
+    // Start auto-refresh
+    startAutoRefresh();
 
-datePicker.addEventListener("change", e => {
-  loadDate(e.target.value);
-});
+    datePicker.addEventListener("change", e => {
+      loadDate(e.target.value);
+    });
 
-function startAutoRefresh() {
-  refreshInterval = setInterval(() => {
-    loadDate(datePicker.value);
-  }, 60000); // 60 seconds
-}
-
-async function loadDate(date) {
-  sessionsDiv.innerHTML = "";
-  emptyDiv.style.display = "none";
-
-  const url = `${SUPABASE_BASE}/linecross_log_${date}.jsonl`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Not found");
-
-    const text = await res.text();
-    const lines = text.trim().split("\n").filter(l => l);
-
-    if (lines.length === 0) throw new Error("Empty");
-
-    console.log(`Loaded ${lines.length} events`);
-    const events = lines.map(line => JSON.parse(line));
-    console.log("Events:", events);
-
-    const sessions = parseSessions(events);
-    console.log("Parsed sessions:", sessions);
-
-    if (sessions.length === 0) {
-      emptyDiv.style.display = "block";
-      return;
+    function startAutoRefresh() {
+      refreshInterval = setInterval(() => {
+        loadDate(datePicker.value);
+      }, 60000); // 60 seconds
     }
 
-    sessions.forEach(session => renderSession(session));
+    async function loadDate(date) {
+      sessionsDiv.innerHTML = "";
+      emptyDiv.style.display = "none";
 
-  } catch (err) {
-    console.error("Load error:", err);
-    emptyDiv.style.display = "block";
-  }
-}
+      const url = `${SUPABASE_BASE}/linecross_log_${date}.jsonl`;
 
-function parseSessions(events) {
-  const sessions = [];
-  let currentSession = null;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Not found");
 
-  for (let i = 0; i < events.length; i++) {
-    const event = events[i];
-    console.log(`[${i}] Processing:`, event);
+        const text = await res.text();
+        const lines = text.trim().split("\n").filter(l => l);
 
-    if (event.type === "session_start") {
-      // Start new session
-      currentSession = {
-        startTime: event.time,
-        stopTime: null,
-        counts: {},
-        inZoneMap: {}, // Track items in IN zone with their unique occurrences
-        totalCounted: 0,
-        inEvents: 0,
-        outEvents: 0,
-        skippedOuts: 0
-      };
-      console.log("Started new session at", event.time);
-    } 
-    else if (event.type === "session_stop") {
-      if (currentSession) {
-        currentSession.stopTime = event.time;
-        console.log("Stopped session at", event.time, "- Total counts:", currentSession.counts);
-        sessions.push(currentSession);
-        currentSession = null;
-      }
-    }
-    else if (currentSession) {
-      if (event.type === "zone_in") {
-        const item = event.item || "";
-        currentSession.inEvents++;
-        
-        // Add to inZone map (track each occurrence)
-        if (!currentSession.inZoneMap[item]) {
-          currentSession.inZoneMap[item] = 0;
+        if (lines.length === 0) throw new Error("Empty");
+
+        console.log(`Loaded ${lines.length} events`);
+        const events = lines.map(line => JSON.parse(line));
+        console.log("Events:", events);
+
+        const sessions = parseSessions(events);
+        console.log("Parsed sessions:", sessions);
+
+        if (sessions.length === 0) {
+          emptyDiv.style.display = "block";
+          return;
         }
-        currentSession.inZoneMap[item]++;
-        
-        console.log(`  🟢 IN: "${item}" - inZone count: ${currentSession.inZoneMap[item]}`);
+
+        sessions.forEach(session => renderSession(session));
+
+      } catch (err) {
+        console.error("Load error:", err);
+        emptyDiv.style.display = "block";
       }
-      else if (event.type === "zone_out") {
-        const item = event.item || "";
-        currentSession.outEvents++;
-        
-        // Check if this item has any IN occurrences
-        if (currentSession.inZoneMap[item] && currentSession.inZoneMap[item] > 0) {
-          // Decrement IN count
-          currentSession.inZoneMap[item]--;
-          
-          // Count it
-          const displayItem = item || "(empty)";
-          currentSession.counts[displayItem] = (currentSession.counts[displayItem] || 0) + 1;
-          currentSession.totalCounted++;
-          
-          console.log(`  ✅ COUNTED: "${item}" - Total now: ${currentSession.counts[displayItem]}, Remaining IN: ${currentSession.inZoneMap[item]}`);
-          
-          // Remove from map if count reaches 0
-          if (currentSession.inZoneMap[item] === 0) {
-            delete currentSession.inZoneMap[item];
+    }
+
+    function parseSessions(events) {
+      const sessions = [];
+      let currentSession = null;
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+
+        if (event.type === "session_start") {
+          // If a session was already active but we see a new start, close the old one
+          if (currentSession) {
+            sessions.push(currentSession);
           }
-        } else {
-          currentSession.skippedOuts++;
-          console.log(`  ⚠️ OUT: "${item}" - Not in inZone, skipped`);
+
+          currentSession = {
+            startTime: event.time,
+            stopTime: null,
+            counts: {},
+            totalCounted: 0,
+            passEvents: 0
+          };
+          console.log("Started new session at", event.time);
+        }
+
+        else if (event.type === "session_stop") {
+          if (currentSession) {
+            currentSession.stopTime = event.time;
+            console.log("Stopped session. Summary:", currentSession.counts);
+            sessions.push(currentSession);
+            currentSession = null;
+          }
+        }
+
+        else if (currentSession && event.type === "counted_pass") {
+          const item = event.item || "(unknown)";
+          currentSession.passEvents++;
+
+          // Increment count for this specific item model/label
+          currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
+
+          // Update the total for the current session
+          currentSession.totalCounted++;
+
+          console.log(`  ✅ ${event.direction}: "${item}" - Session Total: ${currentSession.totalCounted}`);
         }
       }
+
+      // If the log ends while a session is still active
+      if (currentSession) {
+        sessions.push(currentSession);
+      }
+
+      return sessions;
     }
-  }
 
-  // If there's an active session without stop, include it
-  if (currentSession) {
-    currentSession.stopTime = null; // Still running
-    console.log("Active session (no stop yet):", currentSession);
-    sessions.push(currentSession);
-  }
+    function renderSession(session) {
+      const sessionDiv = document.createElement("div");
+      sessionDiv.className = "session";
 
-  return sessions;
-}
+      const startTime = formatDateTime(session.startTime);
+      const stopTime = session.stopTime ? formatDateTime(session.stopTime) : "Still running...";
+      const duration = session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "—";
 
-function renderSession(session) {
-  const sessionDiv = document.createElement("div");
-  sessionDiv.className = "session";
+      const totalCount = Object.values(session.counts).reduce((a, b) => a + b, 0);
 
-  const startTime = formatDateTime(session.startTime);
-  const stopTime = session.stopTime ? formatDateTime(session.stopTime) : "Still running...";
-  const duration = session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "—";
+      // Calculate items still in zone
+      const itemsInZone = Object.entries(session.inZoneMap || {})
+        .filter(([_, count]) => count > 0)
+        .reduce((sum, [_, count]) => sum + count, 0);
 
-  const totalCount = Object.values(session.counts).reduce((a, b) => a + b, 0);
-  
-  // Calculate items still in zone
-  const itemsInZone = Object.entries(session.inZoneMap || {})
-    .filter(([_, count]) => count > 0)
-    .reduce((sum, [_, count]) => sum + count, 0);
-
-  let countsHTML = "";
-  if (Object.keys(session.counts).length > 0) {
-    countsHTML = `
+      let countsHTML = "";
+      if (Object.keys(session.counts).length > 0) {
+        countsHTML = `
       <table class="counts-table">
         <thead>
           <tr>
@@ -460,8 +442,8 @@ function renderSession(session) {
         Skipped OUTs: ${session.skippedOuts || 0}
       </div>
     `;
-  } else {
-    countsHTML = `
+      } else {
+        countsHTML = `
       <div class="no-counts">No items counted (no IN→OUT sequences)</div>
       <div class="debug-info">
         Counted: ${session.totalCounted || 0} | 
@@ -471,9 +453,9 @@ function renderSession(session) {
         Skipped OUTs: ${session.skippedOuts || 0}
       </div>
     `;
-  }
+      }
 
-  sessionDiv.innerHTML = `
+      sessionDiv.innerHTML = `
     <div class="session-header">
       <div class="session-title">
         Session ${session.stopTime ? '(Completed)' : '(Active)'}
@@ -497,37 +479,38 @@ function renderSession(session) {
     </div>
   `;
 
-  sessionsDiv.appendChild(sessionDiv);
-}
+      sessionsDiv.appendChild(sessionDiv);
+    }
 
-function formatDateTime(isoString) {
-  if (!isoString) return "—";
-  const date = new Date(isoString);
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-}
+    function formatDateTime(isoString) {
+      if (!isoString) return "—";
+      const date = new Date(isoString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
 
-function calculateDuration(start, stop) {
-  const ms = new Date(stop) - new Date(start);
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
+    function calculateDuration(start, stop) {
+      const ms = new Date(stop) - new Date(start);
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
 
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
-  } else {
-    return `${seconds}s`;
-  }
-}
-</script>
+      if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    }
+  </script>
 
 </body>
+
 </html>

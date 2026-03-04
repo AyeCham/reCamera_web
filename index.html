@@ -6,257 +6,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conveyor History</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #ffffff;
-      min-height: 100vh;
-      padding: 20px;
-      color: #333;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      color: #333;
-      margin-bottom: 25px;
-      font-size: 28px;
-      font-weight: 600;
-    }
-
-    .controls {
-      background: #f8f9fa;
-      padding: 15px 20px;
-      border-radius: 6px;
-      margin-bottom: 25px;
-      border: 1px solid #e0e0e0;
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .controls label {
-      font-weight: 500;
-      color: #555;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .controls input[type="date"] {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .auto-refresh {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #666;
-      font-size: 13px;
-    }
-
-    .refresh-indicator {
-      width: 8px;
-      height: 8px;
-      background: #4caf50;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.3;
-      }
-    }
-
-    .sessions {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .session {
-      background: #fafafa;
-      border-radius: 8px;
-      border: 1px solid #e0e0e0;
-      overflow: hidden;
-    }
-
-    .session-header {
-      background: #f5f5f5;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .session-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #333;
-    }
-
-    .session-duration {
-      font-size: 13px;
-      color: #666;
-    }
-
-    .session-content {
-      padding: 20px;
-      background: white;
-    }
-
-    .session-times {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-bottom: 20px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .time-box {
-      padding: 12px 15px;
-      border-radius: 5px;
-      border: 1px solid #e0e0e0;
-      background: #fafafa;
-    }
-
-    .time-label {
-      font-size: 11px;
-      color: #888;
-      font-weight: 600;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
-    }
-
-    .time-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .counts-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .counts-table th {
-      background: #f8f9fa;
-      padding: 12px 15px;
-      text-align: left;
-      font-weight: 600;
-      color: #555;
-      font-size: 13px;
-      border-bottom: 2px solid #e0e0e0;
-    }
-
-    .counts-table td {
-      padding: 12px 15px;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 14px;
-    }
-
-    .counts-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .counts-table tbody tr:hover {
-      background: #f9f9f9;
-    }
-
-    .item-name {
-      font-weight: 500;
-      color: #333;
-    }
-
-    .item-count {
-      font-size: 16px;
-      font-weight: 600;
-      color: #333;
-    }
-
-    .total-row {
-      background: #f5f5f5 !important;
-    }
-
-    .total-row td {
-      border-top: 2px solid #e0e0e0;
-      padding-top: 15px;
-      font-weight: 600;
-    }
-
-    .empty {
-      background: #fafafa;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      color: #999;
-      font-size: 16px;
-      border: 1px solid #e0e0e0;
-    }
-
-    .empty::before {
-      content: "📭";
-      display: block;
-      font-size: 48px;
-      margin-bottom: 15px;
-    }
-
-    .no-counts {
-      color: #999;
-      font-style: italic;
-      padding: 20px;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    .debug-info {
-      margin-top: 10px;
-      padding: 10px;
-      background: #f0f0f0;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #666;
-    }
-
-    @media (max-width: 768px) {
-      .session-times {
-        grid-template-columns: 1fr;
-      }
-
-      .session-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #ffffff; min-height: 100vh; padding: 20px; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { color: #333; margin-bottom: 25px; font-size: 28px; font-weight: 600; }
+    .controls { background: #f8f9fa; padding: 15px 20px; border-radius: 6px; margin-bottom: 25px; border: 1px solid #e0e0e0; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+    .controls label { font-weight: 500; color: #555; display: flex; align-items: center; gap: 10px; }
+    .controls input[type="date"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    .auto-refresh { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #666; font-size: 13px; }
+    .refresh-indicator { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .sessions { display: flex; flex-direction: column; gap: 20px; }
+    .session { background: #fafafa; border-radius: 8px; border: 1px solid #e0e0e0; overflow: hidden; }
+    .session-header { background: #f5f5f5; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; }
+    .session-title { font-size: 16px; font-weight: 600; color: #333; }
+    .session-duration { font-size: 13px; color: #666; }
+    .session-content { padding: 20px; background: white; }
+    .session-times { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; }
+    .time-box { padding: 12px 15px; border-radius: 5px; border: 1px solid #e0e0e0; background: #fafafa; }
+    .time-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .time-value { font-size: 14px; font-weight: 500; color: #333; }
+    .counts-table { width: 100%; border-collapse: collapse; }
+    .counts-table th { background: #f8f9fa; padding: 12px 15px; text-align: left; font-weight: 600; color: #555; font-size: 13px; border-bottom: 2px solid #e0e0e0; }
+    .counts-table td { padding: 12px 15px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .total-row { background: #f5f5f5 !important; font-weight: 600; }
+    .empty { background: #fafafa; padding: 60px 20px; text-align: center; border-radius: 8px; color: #999; font-size: 16px; border: 1px solid #e0e0e0; }
+    .empty::before { content: "📭"; display: block; font-size: 48px; margin-bottom: 15px; }
+    .debug-info { margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-size: 12px; color: #666; }
   </style>
 </head>
 
 <body>
-
   <div class="container">
     <h1>Conveyor History</h1>
 
@@ -265,6 +45,9 @@
         Select Date:
         <input type="date" id="datePicker" />
       </label>
+      <button id="downloadDailyBtn" style="padding: 8px 15px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: 600;">
+        Download Daily Report (CSV)
+      </button>
       <div class="auto-refresh">
         <div class="refresh-indicator"></div>
         Auto-refresh every 60s
@@ -272,43 +55,33 @@
     </div>
 
     <div id="sessions" class="sessions"></div>
-
-    <div id="empty" class="empty" style="display:none;">
-      No sessions found for this date
-    </div>
+    <div id="empty" class="empty" style="display:none;">No sessions found for this date</div>
   </div>
 
   <script>
     const SUPABASE_BASE = "https://zhimfkxspjcsvdgkxlid.supabase.co/storage/v1/object/public/history";
-
     const sessionsDiv = document.getElementById("sessions");
     const emptyDiv = document.getElementById("empty");
     const datePicker = document.getElementById("datePicker");
-
+    
+    let currentSessionsData = [];
     let refreshInterval;
 
-    // Set today as default
+    // Default Initialization
     const today = new Date().toISOString().split("T")[0];
     datePicker.value = today;
     loadDate(today);
-
-    // Start auto-refresh
     startAutoRefresh();
 
-    datePicker.addEventListener("change", e => {
-      loadDate(e.target.value);
-    });
+    datePicker.addEventListener("change", e => loadDate(e.target.value));
 
     function startAutoRefresh() {
-      refreshInterval = setInterval(() => {
-        loadDate(datePicker.value);
-      }, 60000); // 60 seconds
+      refreshInterval = setInterval(() => loadDate(datePicker.value), 60000);
     }
 
     async function loadDate(date) {
       sessionsDiv.innerHTML = "";
       emptyDiv.style.display = "none";
-
       const url = `${SUPABASE_BASE}/linecross_log_${date}.jsonl`;
 
       try {
@@ -317,22 +90,24 @@
 
         const text = await res.text();
         const lines = text.trim().split("\n").filter(l => l);
-
         if (lines.length === 0) throw new Error("Empty");
 
         const events = lines.map(line => JSON.parse(line));
-        const sessions = parseSessions(events);
+        
+        // Save sessions to global variable for CSV export
+        currentSessionsData = parseSessions(events);
 
-        if (sessions.length === 0) {
+        if (currentSessionsData.length === 0) {
           emptyDiv.style.display = "block";
           return;
         }
 
-        // Sort sessions to show newest at the top
-        sessions.reverse().forEach(session => renderSession(session));
+        // Render sessions (Reversed to show newest first)
+        [...currentSessionsData].reverse().forEach(session => renderSession(session));
 
       } catch (err) {
         console.error("Load error:", err);
+        currentSessionsData = [];
         emptyDiv.style.display = "block";
       }
     }
@@ -343,31 +118,21 @@
 
       for (let i = 0; i < events.length; i++) {
         const event = events[i];
-
         if (event.type === "session_start") {
           if (currentSession) sessions.push(currentSession);
-
-          currentSession = {
-            startTime: event.time,
-            stopTime: null,
-            counts: {},
-            totalCounted: 0
-          };
-        }
-        else if (event.type === "session_stop") {
+          currentSession = { startTime: event.time, stopTime: null, counts: {}, totalCounted: 0 };
+        } else if (event.type === "session_stop") {
           if (currentSession) {
             currentSession.stopTime = event.time;
             sessions.push(currentSession);
             currentSession = null;
           }
-        }
-        else if (currentSession && event.type === "counted_pass") {
+        } else if (currentSession && event.type === "counted_pass") {
           const item = event.item || "Unknown Item";
           currentSession.counts[item] = (currentSession.counts[item] || 0) + 1;
           currentSession.totalCounted++;
         }
       }
-
       if (currentSession) sessions.push(currentSession);
       return sessions;
     }
@@ -380,70 +145,30 @@
       const stopTime = session.stopTime ? formatDateTime(session.stopTime) : "Still running...";
       const duration = session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "—";
 
-      // Generate Table Rows
       const rows = Object.entries(session.counts)
-        .sort((a, b) => b[1] - a[1]) // Sort by highest count first
-        .map(([item, count]) => `
-      <tr>
-        <td class="item-name">${item}</td>
-        <td class="item-count">${count}</td>
-      </tr>
-    `).join("");
-
-      const tableHTML = rows ? `
-    <table class="counts-table">
-      <thead>
-        <tr><th>Item Type</th><th>Count</th></tr>
-      </thead>
-      <tbody>
-        ${rows}
-        <tr class="total-row">
-          <td>TOTAL</td>
-          <td class="item-count">${session.totalCounted}</td>
-        </tr>
-      </tbody>
-    </table>
-  ` : `<div class="no-counts">No items detected in this session.</div>`;
+        .sort((a, b) => b[1] - a[1])
+        .map(([item, count]) => `<tr><td class="item-name">${item}</td><td class="item-count">${count}</td></tr>`)
+        .join("");
 
       sessionDiv.innerHTML = `
-    <div class="session-header">
-      <div class="session-title">Session ${session.stopTime ? '✓' : '▶'}</div>
-      <div class="session-duration">Duration: ${duration}</div>
-    </div>
-    <div class="session-content">
-      <div class="session-times">
-        <div class="time-box">
-          <div class="time-label">Start</div>
-          <div class="time-value">${startTime}</div>
+        <div class="session-header">
+          <div class="session-title">Session ${session.stopTime ? '✓' : '▶'}</div>
+          <div class="session-duration">Duration: ${duration}</div>
         </div>
-        <div class="time-box">
-          <div class="time-label">${session.stopTime ? 'Stop' : 'Running'}</div>
-          <div class="time-value">${stopTime}</div>
-        </div>
-      </div>
-      ${tableHTML}
-      <div class="debug-info">
-        Event Type: downward_pass | Total Detected: ${session.totalCounted}
-      </div>
-    </div>
-  `;
-
+        <div class="session-content">
+          <div class="session-times">
+            <div class="time-box"><div class="time-label">Start</div><div class="time-value">${startTime}</div></div>
+            <div class="time-box"><div class="time-label">${session.stopTime ? 'Stop' : 'Running'}</div><div class="time-value">${stopTime}</div></div>
+          </div>
+          ${rows ? `<table class="counts-table"><thead><tr><th>Item Type</th><th>Count</th></tr></thead><tbody>${rows}<tr class="total-row"><td>TOTAL</td><td>${session.totalCounted}</td></tr></tbody></table>` : '<div class="no-counts">No items detected</div>'}
+          <div class="debug-info">Total Detected: ${session.totalCounted}</div>
+        </div>`;
       sessionsDiv.appendChild(sessionDiv);
     }
 
-
-
     function formatDateTime(isoString) {
       if (!isoString) return "—";
-      const date = new Date(isoString);
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
+      return new Date(isoString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
     function calculateDuration(start, stop) {
@@ -451,17 +176,45 @@
       const seconds = Math.floor(ms / 1000);
       const minutes = Math.floor(seconds / 60);
       const hours = Math.floor(minutes / 60);
+      if (hours > 0) return `${hours}h ${minutes % 60}m`;
+      if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+      return `${seconds}s`;
+    }
 
-      if (hours > 0) {
-        return `${hours}h ${minutes % 60}m`;
-      } else if (minutes > 0) {
-        return `${minutes}m ${seconds % 60}s`;
-      } else {
-        return `${seconds}s`;
+    // CSV DOWNLOAD LOGIC
+    document.getElementById("downloadDailyBtn").addEventListener("click", () => {
+      if (currentSessionsData.length === 0) {
+        alert("No data available to download for this date.");
+        return;
       }
+      downloadDailyCSV(currentSessionsData, datePicker.value);
+    });
+
+    function downloadDailyCSV(sessions, date) {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += `DAILY CONVEYOR REPORT: ${date}\n`;
+      csvContent += `Total Sessions,${sessions.length}\n\n`;
+
+      sessions.forEach((session, index) => {
+        csvContent += `--- SESSION ${index + 1} ---\n`;
+        csvContent += `Start,${formatDateTime(session.startTime)}\n`;
+        csvContent += `Stop,${session.stopTime ? formatDateTime(session.stopTime) : "Still Running"}\n`;
+        csvContent += `Duration,${session.stopTime ? calculateDuration(session.startTime, session.stopTime) : "N/A"}\n`;
+        csvContent += "Item Type,Count\n";
+        Object.entries(session.counts).forEach(([item, count]) => {
+          csvContent += `"${item}",${count}\n`;
+        });
+        csvContent += `SESSION TOTAL,${session.totalCounted}\n\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Daily_Report_${date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
-
 </body>
-
 </html>

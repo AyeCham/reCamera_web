@@ -395,8 +395,8 @@
         ],
         "order": 1,
         "className": "",
-        "visible": true,
-        "disabled": false
+        "visible": "true",
+        "disabled": "false"
     },
     {
         "id": "ui_group_control",
@@ -3238,135 +3238,6 @@
         "wires": []
     },
     {
-        "id": "d3187edeae5c5797",
-        "type": "function",
-        "z": "ccc7be52a837980a",
-        "name": "Run Control",
-        "func": "if (msg.topic !== \"ui_command\") {\n    return null;\n}\n\nif (msg.payload === \"start\") {\n    flow.set(\"isRunning\", true);\n    return {\n        payload: \"start\",\n        status: \"🟢 Running\"\n    };\n}\n\nif (msg.payload === \"stop\") {\n    flow.set(\"isRunning\", false);\n    return {\n        payload: \"stop\",\n        status: \"🔴 Stopped\"\n    };\n}\n\nif (msg.payload === \"reset\") {\n    // Send reset to line cross counter\n    return {\n        topic: \"line_cross\",\n        payload: { reset: true }\n    };\n}\n\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 350,
-        "y": 400,
-        "wires": [
-            [
-                "f865f49fa3438170",
-                "617637212830f7e6",
-                "7b23f5597fd3dc71",
-                "20fbac9f283e0d39"
-            ]
-        ]
-    },
-    {
-        "id": "f865f49fa3438170",
-        "type": "ui-text",
-        "z": "ccc7be52a837980a",
-        "group": "ui_group_control",
-        "order": 3,
-        "width": "",
-        "height": "",
-        "name": "",
-        "label": "Status",
-        "format": "{{msg.payload}}",
-        "layout": "",
-        "style": false,
-        "font": "",
-        "fontSize": "",
-        "color": "#000000",
-        "wrapText": false,
-        "className": "",
-        "x": 570,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "2ac0aab9247948c0",
-        "type": "ui-template",
-        "z": "ccc7be52a837980a",
-        "group": "ui_group_control",
-        "page": "",
-        "ui": "",
-        "name": "Count Ui",
-        "order": 0,
-        "width": "0",
-        "height": "0",
-        "head": "",
-        "format": "<template>\n  <div class=\"root\">\n    <div class=\"camera\">\n      <svg ref=\"svg\"></svg>\n    </div>\n\n    <div class=\"result-panel\">\n      <h3>Conveyor Counter</h3>\n\n      <div class=\"count-display\">\n        <div class=\"total-count\">\n          <div class=\"count-box\">\n            <span class=\"label\">BAGS PASSED</span>\n            <span class=\"number\">{{ totalPassed }}</span>\n          </div>\n        </div>\n\n        <div v-if=\"lastPass\" class=\"last-event\">\n          Last Pass: <strong>{{ lastPass.label }}</strong>\n          <span style=\"font-size: 11px; color: #666;\">\n            {{ lastPass.time }}\n          </span>\n        </div>\n\n        <div class=\"breakdown-full\">\n          <h4>Breakdown by Type</h4>\n          <div v-for=\"(count, cls) in passedCounts\" :key=\"cls\" class=\"detail-item\">\n            <span class=\"class-name\">{{ cls }}</span>: <strong>{{ count }}</strong>\n          </div>\n          <div v-if=\"Object.keys(passedCounts).length === 0\" class=\"empty\">No items passed yet</div>\n        </div>\n\n        <div class=\"tracking-status\">\n          <h4>Currently Tracked (IN zone)</h4>\n          <div v-for=\"(obj, key) in activeObjects\" :key=\"key\" class=\"tracked-item\">\n            {{ obj.label }}\n            <span style=\"color: #ff9800; font-size: 10px;\">⏳ in zone</span>\n          </div>\n          <div v-if=\"Object.keys(activeObjects).length === 0\" class=\"empty\">No active items</div>\n        </div>\n      </div>\n\n      <div style=\"padding: 10px; background: white; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;\">\n        <strong style=\"font-size: 12px;\">Line Position: Y = {{ lineY }}</strong><br>\n        <button @click=\"adjustLine(-50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">⬆ UP</button>\n        <button @click=\"adjustLine(50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">⬇ DOWN</button>\n      </div>\n\n      <div style=\"padding: 10px; background: #f0f0f0; margin-top: 10px; max-height: 150px; overflow-y: auto;\">\n        <h4 style=\"margin: 0 0 5px 0; font-size: 12px;\">Recent Events:</h4>\n        <div v-for=\"(log, i) in logs\" :key=\"i\" style=\"font-size: 11px; padding: 2px; font-family: monospace;\">\n          {{ log }}\n        </div>\n      </div>\n    </div>\n\n    <div class=\"panel\">\n      <div class=\"buttons\">\n        <button class=\"start\" @click=\"sendCmd('start')\">▶ START</button>\n        <button class=\"stop\" @click=\"sendCmd('stop')\">⏹ STOP</button>\n        <button class=\"reset\" @click=\"resetCounts\">🔄 RESET</button>\n      </div>\n      <p class=\"status\">Camera: {{ wsStatus }}</p>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n  data() {\n    return {\n      ws: null,\n      wsStatus: \"Disconnected\",\n      isDrawing: false,\n\n      svgWidth: 640,\n      svgHeight: 640,\n      lineY: 350,\n\n      trackedObjects: {},\n      activeObjects: {},\n      \n      totalPassed: 0,\n      passedCounts: {},\n      lastPass: null,\n      \n      logs: [],\n      \n      lastImageUpdate: 0,\n      imageUpdateInterval: 33,\n      lineElement: null,\n      labelElement: null,\n      imageElement: null,\n      processingFrame: false\n    };\n  },\n\n  methods: {\n    addLog(msg) {\n      const time = new Date().toLocaleTimeString();\n      this.logs.unshift(`[${time}] ${msg}`);\n      if (this.logs.length > 15) this.logs.pop();\n    },\n\n    resetCounts() {\n      this.totalPassed = 0;\n      this.passedCounts = {};\n      this.activeObjects = {};\n      this.trackedObjects = {};\n      this.lastPass = null;\n      this.logs = [];\n      this.addLog(\"🔄 Counter reset\");\n      \n      this.send({ topic: \"line_cross\", payload: { reset: true } });\n    },\n\n    sendCmd(cmd) {\n      this.send({ topic: \"ui_command\", payload: cmd });\n\n      if (cmd === \"start\") {\n        this.isDrawing = true;\n        this.addLog(\"▶ Started counting\");\n      }\n\n      if (cmd === \"stop\") {\n        this.isDrawing = false;\n        this.addLog(\"⏹ Stopped counting\");\n      }\n    },\n\n    adjustLine(delta) {\n      this.lineY += delta;\n      this.updateCountingLine();\n    },\n\n    initWS() {\n      this.ws = new WebSocket(`ws://${window.location.hostname}:8090`);\n      this.ws.binaryType = \"arraybuffer\";\n\n      this.ws.onopen = () => {\n        this.wsStatus = \"Connected\";\n        this.addLog(\"✅ WebSocket connected\");\n      };\n      \n      this.ws.onclose = () => {\n        this.wsStatus = \"Disconnected\";\n        this.addLog(\"❌ WebSocket disconnected\");\n      };\n\n      this.ws.onmessage = (e) => {\n        if (this.processingFrame) return;\n        \n        this.processingFrame = true;\n        \n        try {\n          const json = JSON.parse(\n            new TextDecoder().decode(new Uint8Array(e.data))\n          );\n          const data = json.data || json;\n\n          const now = Date.now();\n          if (now - this.lastImageUpdate >= this.imageUpdateInterval) {\n            this.renderImage(data);\n            this.lastImageUpdate = now;\n          }\n\n          if (this.isDrawing) {\n            this.checkLineCrossing(data);\n          }\n        } catch (err) {\n          console.error(\"WS parse error:\", err);\n        } finally {\n          this.processingFrame = false;\n        }\n      };\n    },\n\n    renderImage(data) {\n      if (!data?.image || !data?.resolution) return;\n\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      if (this.svgWidth !== data.resolution[0] || this.svgHeight !== data.resolution[1]) {\n        this.svgWidth = data.resolution[0];\n        this.svgHeight = data.resolution[1];\n        svg.setAttribute(\"viewBox\", `0 0 ${this.svgWidth} ${this.svgHeight}`);\n      }\n\n      if (!this.imageElement) {\n        this.imageElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"image\");\n        this.imageElement.setAttribute(\"x\", 0);\n        this.imageElement.setAttribute(\"y\", 0);\n        svg.appendChild(this.imageElement);\n      }\n\n      this.imageElement.setAttribute(\"width\", this.svgWidth);\n      this.imageElement.setAttribute(\"height\", this.svgHeight);\n      this.imageElement.setAttribute(\"href\", `data:image/jpeg;base64,${data.image}`);\n\n      if (!this.lineElement) {\n        this.drawCountingLine();\n      }\n    },\n\n    drawCountingLine() {\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      if (!this.lineElement) {\n        this.lineElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"line\");\n        this.lineElement.setAttribute(\"id\", \"counting-line\");\n        this.lineElement.setAttribute(\"stroke\", \"#ff3333\");\n        this.lineElement.setAttribute(\"stroke-width\", 4);\n        this.lineElement.setAttribute(\"stroke-dasharray\", \"10,5\");\n        svg.appendChild(this.lineElement);\n      }\n\n      if (!this.labelElement) {\n        this.labelElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"text\");\n        this.labelElement.setAttribute(\"id\", \"line-label\");\n        this.labelElement.setAttribute(\"x\", 10);\n        this.labelElement.setAttribute(\"fill\", \"#ff3333\");\n        this.labelElement.setAttribute(\"font-size\", 18);\n        this.labelElement.setAttribute(\"font-weight\", \"bold\");\n        svg.appendChild(this.labelElement);\n      }\n\n      this.updateCountingLine();\n    },\n\n    updateCountingLine() {\n      if (!this.lineElement || !this.labelElement) return;\n\n      this.lineElement.setAttribute(\"x1\", 0);\n      this.lineElement.setAttribute(\"y1\", this.lineY);\n      this.lineElement.setAttribute(\"x2\", this.svgWidth);\n      this.lineElement.setAttribute(\"y2\", this.lineY);\n\n      this.labelElement.setAttribute(\"y\", this.lineY - 10);\n      this.labelElement.textContent = ``;\n    },\n\n    checkLineCrossing(data) {\n      if (!Array.isArray(data?.boxes) || data.boxes.length === 0) {\n        return;\n      }\n\n      const PROXIMITY = 150;\n      const now = Date.now();\n      \n      const currentBoxKeys = new Set();\n      const usedTrackedKeys = new Set();\n\n      const sortedBoxes = data.boxes\n        .map(([x, y, w, h, score, cls]) => ({ x, y, w, h, score, cls }))\n        .sort((a, b) => a.x - b.x);\n\n      sortedBoxes.forEach(box => {\n        const { x, y, w, h, score, cls } = box;\n        const label = data.labels?.[cls] ?? `ID-${cls}`;\n        let matchedKey = null;\n        let minDist = Infinity;\n\n        for (const key in this.trackedObjects) {\n          if (usedTrackedKeys.has(key)) continue;\n          \n          const obj = this.trackedObjects[key];\n          if (obj.label === label) {\n            const dx = x - obj.x;\n            const dy = y - obj.y;\n            const distSq = dx * dx + dy * dy;\n            \n            if (distSq < PROXIMITY * PROXIMITY && distSq < minDist) {\n              minDist = distSq;\n              matchedKey = key;\n            }\n          }\n        }\n\n        const key = matchedKey || `${label}_${now}_${Math.random().toString(36).slice(2, 6)}`;\n        currentBoxKeys.add(key);\n        if (matchedKey) {\n          usedTrackedKeys.add(matchedKey);\n        }\n\n        const detectedAboveLine = y < this.lineY;\n        const detectedBelowLine = y >= this.lineY;\n\n        if (detectedAboveLine) {\n          if (!this.activeObjects[key]) {\n            this.activeObjects[key] = { label, enteredAt: now };\n            this.addLog(`🟢 IN: ${label} at y=${y.toFixed(0)}`);\n            \n            this.send({\n              topic: \"line_cross\",\n              payload: {\n                type: \"zone_in\",\n                class: label, // ADDED: Ensuring label is sent to Node-RED\n                time: new Date().toISOString(),\n                item: label,\n                direction: \"in\"\n              }\n            });\n          }\n        } \n        else if (detectedBelowLine) {\n          if (this.activeObjects[key]) {\n            this.totalPassed++;\n            this.passedCounts[label] = (this.passedCounts[label] || 0) + 1;\n            \n            this.lastPass = {\n              label: label,\n              time: new Date().toLocaleTimeString()\n            };\n            \n            this.addLog(`✅ COUNTED: ${label} at y=${y.toFixed(0)} - Total: ${this.totalPassed}`);\n            \n            delete this.activeObjects[key];\n            \n            this.send({\n              topic: \"line_cross\",\n              payload: {\n                type: \"zone_out\",\n                class: label, // ADDED: Ensuring label is sent to Node-RED\n                time: new Date().toISOString(),\n                item: label,\n                direction: \"out\",\n                counted: true,\n                total: this.totalPassed,\n                classCount: this.passedCounts[label]\n              }\n            });\n          }\n        }\n\n        this.trackedObjects[key] = { x, y, label, lastSeen: now };\n      });\n\n      const STALE_TIMEOUT = 3000;\n      for (const key in this.trackedObjects) {\n        if (!currentBoxKeys.has(key) && now - this.trackedObjects[key].lastSeen > STALE_TIMEOUT) {\n          delete this.trackedObjects[key];\n          if (this.activeObjects[key]) {\n            delete this.activeObjects[key];\n          }\n        }\n      }\n    },\n  },\n\n  mounted() {\n    this.initWS();\n  },\n\n  unmounted() {\n    if (this.ws) this.ws.close();\n  },\n};\n</script>\n\n<style>\n  .root {\n    display: grid;\n    grid-template-columns: 1fr 350px;\n    grid-template-rows: 1fr auto;\n    width: 100%;\n    height: 100%;\n    gap: 0;\n  }\n\n  .camera {\n    grid-column: 1;\n    grid-row: 1 / 3;\n    background: black;\n  }\n\n  .camera svg {\n    width: 100%;\n    height: 100%;\n  }\n\n  .result-panel {\n    grid-column: 2;\n    grid-row: 1;\n    padding: 15px;\n    background: #f9f9f9;\n    border-left: 2px solid #ddd;\n    overflow-y: auto;\n  }\n\n  .result-panel h3 {\n    margin: 0 0 15px 0;\n    color: #333;\n    font-size: 18px;\n  }\n\n  .count-display {\n    display: flex;\n    flex-direction: column;\n    gap: 15px;\n  }\n\n  .total-count {\n    display: flex;\n    justify-content: center;\n  }\n\n  .count-box {\n    padding: 20px;\n    border-radius: 8px;\n    text-align: center;\n    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n    border: 3px solid #5a67d8;\n    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);\n    width: 100%;\n  }\n\n  .count-box .label {\n    display: block;\n    font-size: 14px;\n    color: #fff;\n    font-weight: bold;\n    letter-spacing: 1px;\n  }\n\n  .count-box .number {\n    display: block;\n    font-size: 48px;\n    font-weight: bold;\n    margin-top: 5px;\n    color: #fff;\n  }\n\n  .last-event {\n    padding: 10px;\n    background: #d4edda;\n    border-radius: 4px;\n    font-size: 13px;\n    border: 1px solid #28a745;\n    text-align: center;\n  }\n\n  .breakdown-full {\n    padding: 12px;\n    background: white;\n    border-radius: 4px;\n    border: 1px solid #e0e0e0;\n  }\n\n  .breakdown-full h4 {\n    margin: 0 0 10px 0;\n    font-size: 14px;\n    color: #666;\n  }\n\n  .detail-item {\n    padding: 6px 0;\n    font-size: 13px;\n    border-bottom: 1px solid #f0f0f0;\n  }\n\n  .detail-item:last-child {\n    border-bottom: none;\n  }\n\n  .class-name {\n    color: #667eea;\n    font-weight: 600;\n  }\n\n  .tracking-status {\n    padding: 12px;\n    background: #fff3cd;\n    border-radius: 4px;\n    border: 1px solid #ffc107;\n  }\n\n  .tracking-status h4 {\n    margin: 0 0 8px 0;\n    font-size: 13px;\n    color: #856404;\n  }\n\n  .tracked-item {\n    padding: 4px 0;\n    font-size: 12px;\n    color: #856404;\n  }\n\n  .empty {\n    color: #999;\n    font-size: 11px;\n    font-style: italic;\n  }\n\n  .panel {\n    grid-column: 2;\n    grid-row: 2;\n    padding: 14px;\n    background: #f5f5f5;\n    border-left: 2px solid #ddd;\n    border-top: 2px solid #ddd;\n  }\n\n  .buttons {\n    display: flex;\n    gap: 8px;\n  }\n\n  button {\n    flex: 1;\n    padding: 10px;\n    font-weight: bold;\n    border: none;\n    cursor: pointer;\n    border-radius: 4px;\n    font-size: 12px;\n  }\n\n  .start {\n    background: #4caf50;\n    color: white;\n  }\n\n  .stop {\n    background: #f44336;\n    color: white;\n  }\n\n  .reset {\n    background: #ff9800;\n    color: white;\n  }\n\n  .status {\n    margin-top: 8px;\n    font-size: 12px;\n    color: #666;\n  }\n</style>",
-        "storeOutMessages": true,
-        "passthru": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "className": "",
-        "x": 160,
-        "y": 200,
-        "wires": [
-            [
-                "b6a361aa5b2f3a6e",
-                "d3187edeae5c5797"
-            ]
-        ]
-    },
-    {
-        "id": "0072e8cc3242535c",
-        "type": "file",
-        "z": "ccc7be52a837980a",
-        "name": "Append History Log",
-        "filename": "filename",
-        "filenameType": "msg",
-        "appendNewline": true,
-        "createDir": true,
-        "overwriteFile": "false",
-        "encoding": "utf8",
-        "x": 910,
-        "y": 240,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "617637212830f7e6",
-        "type": "function",
-        "z": "ccc7be52a837980a",
-        "name": "Log Start",
-        "func": "if (msg.status !== \"🟢 Running\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_start\",\n    time: now,\n    event: \"counting_started\"\n};\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 400,
-        "wires": [
-            [
-                "0072e8cc3242535c"
-            ]
-        ]
-    },
-    {
-        "id": "7b23f5597fd3dc71",
-        "type": "function",
-        "z": "ccc7be52a837980a",
-        "name": "Log Stop",
-        "func": "if (msg.status !== \"🔴 Stopped\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_stop\",\n    time: now,\n    event: \"counting_stopped\"\n};\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 340,
-        "wires": [
-            [
-                "0072e8cc3242535c"
-            ]
-        ]
-    },
-    {
         "id": "9e753737c23f8281",
         "type": "function",
         "z": "ccc7be52a837980a",
@@ -3378,8 +3249,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 1620,
+        "x": 530,
+        "y": 700,
         "wires": [
             [
                 "2efe7dd6e2a3b404"
@@ -3407,8 +3278,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 240,
-        "y": 1500,
+        "x": 120,
+        "y": 700,
         "wires": [
             [
                 "f3b83353360f1b6f"
@@ -3431,8 +3302,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 700,
-        "y": 1620,
+        "x": 760,
+        "y": 700,
         "wires": [
             [
                 "11b98c62b74f7687"
@@ -3452,8 +3323,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 820,
-        "y": 1700,
+        "x": 880,
+        "y": 780,
         "wires": []
     },
     {
@@ -3468,8 +3339,8 @@
         "sendError": false,
         "encoding": "none",
         "allProps": false,
-        "x": 440,
-        "y": 1680,
+        "x": 500,
+        "y": 760,
         "wires": [
             [
                 "9e753737c23f8281"
@@ -3488,8 +3359,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 210,
-        "y": 1700,
+        "x": 270,
+        "y": 780,
         "wires": [
             [
                 "339f624e14564f49"
@@ -3497,48 +3368,81 @@
         ]
     },
     {
-        "id": "fa1efc2b9d38b861",
+        "id": "92c4d8780035e95a",
         "type": "camera",
         "z": "ccc7be52a837980a",
+        "name": "",
         "client": "9d4b3a6a5e8eaea6",
         "audio": false,
         "volume": "50",
-        "x": 120,
-        "y": 80,
+        "option": "0",
+        "fps": "30",
+        "mirror": false,
+        "flip": false,
+        "x": 100,
+        "y": 20,
         "wires": [
             [
-                "8350be7515aeeab6"
+                "1333a4d54e0c740f"
             ]
         ]
     },
     {
-        "id": "8350be7515aeeab6",
+        "id": "1333a4d54e0c740f",
         "type": "model",
         "z": "ccc7be52a837980a",
         "name": "",
         "uri": "",
-        "model": "yolo11n_layss_int8.cvimodel",
-        "tscore": "0.4",
+        "model": "yolo11n_corn2_int8.cvimodel",
+        "tscore": "0.6",
         "tiou": "0.3",
         "debug": false,
         "trace": false,
         "counting": false,
         "draw": false,
-        "classes": "lay1, lay2,lay3,lay4,lay5",
+        "classes": "",
         "splitter": "0,0,0,0",
-        "previewResolution": "auto",
+        "previewResolution": "640x640",
         "previewFps": "30",
         "client": "9d4b3a6a5e8eaea6",
-        "x": 290,
-        "y": 80,
+        "x": 270,
+        "y": 20,
         "wires": [
             [
-                "2ac0aab9247948c0"
+                "d4dce23f0e87e719"
             ]
         ]
     },
     {
-        "id": "b6a361aa5b2f3a6e",
+        "id": "d4dce23f0e87e719",
+        "type": "ui-template",
+        "z": "ccc7be52a837980a",
+        "group": "ui_group_control",
+        "page": "",
+        "ui": "",
+        "name": "Count Ui",
+        "order": 0,
+        "width": "0",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"root\">\n    <div class=\"camera\">\n      <svg ref=\"svg\"></svg>\n    </div>\n\n    <div class=\"result-panel\">\n      <h3>Conveyor Counter</h3>\n\n      <div class=\"count-display\">\n        <div class=\"total-count\">\n          <div class=\"count-box\">\n            <span class=\"label\">BAGS PASSED</span>\n            <span class=\"number\">{{ totalPassed }}</span>\n          </div>\n        </div>\n\n        <div v-if=\"lastPass\" class=\"last-event\">\n          Last Pass: <strong>{{ lastPass.label }}</strong>\n          <span style=\"font-size: 11px; color: #666;\">\n            {{ lastPass.time }}\n          </span>\n        </div>\n\n        <div class=\"breakdown-full\">\n          <h4>Breakdown by Type</h4>\n          <div v-for=\"(count, cls) in passedCounts\" :key=\"cls\" class=\"detail-item\">\n            <span class=\"class-name\">{{ cls }}</span>: <strong>{{ count }}</strong>\n          </div>\n          <div v-if=\"Object.keys(passedCounts).length === 0\" class=\"empty\">No items passed yet</div>\n        </div>\n      </div>\n\n      <div style=\"padding: 10px; background: white; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;\">\n        <strong style=\"font-size: 12px;\">Line Position: X = {{ lineX }}</strong><br>\n        <button @click=\"adjustLine(-50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">◀ Left</button>\n        <button @click=\"adjustLine(50)\" style=\"margin: 5px; padding: 5px 10px; font-size: 11px;\">▶ Right</button>\n      </div>\n\n      <div style=\"padding: 10px; background: #f0f0f0; margin-top: 10px; max-height: 150px; overflow-y: auto;\">\n        <h4 style=\"margin: 0 0 5px 0; font-size: 12px;\">Recent Events:</h4>\n        <div v-for=\"(log, i) in logs\" :key=\"i\" style=\"font-size: 11px; padding: 2px; font-family: monospace;\">\n          {{ log }}\n        </div>\n      </div>\n    </div>\n\n    <div class=\"panel\">\n      <div class=\"buttons\">\n        <button class=\"start\" @click=\"sendCmd('start')\">▶ START</button>\n        <button class=\"stop\" @click=\"sendCmd('stop')\">⏹ STOP</button>\n        <button class=\"reset\" @click=\"resetCounts\">🔄 RESET</button>\n      </div>\n      <p class=\"status\">Camera: {{ wsStatus }}</p>\n    </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() {\n    return {\n      ws: null,\n      wsStatus: \"Disconnected\",\n      isDrawing: false,\n\n      svgWidth: 640,\n      svgHeight: 640,\n      lineX: 320,\n\n      trackedObjects: {},\n      \n      totalPassed: 0,\n      passedCounts: {},\n      lastPass: null,\n      \n      logs: [],\n      \n      lastImageUpdate: 0,\n      imageUpdateInterval: 33,\n      lineElement: null,\n      labelElement: null,\n      imageElement: null,\n      processingFrame: false\n    };\n  },\n\n  methods: {\n    addLog(msg) {\n      const time = new Date().toLocaleTimeString();\n      this.logs.unshift(`[${time}] ${msg}`);\n      if (this.logs.length > 15) this.logs.pop();\n    },\n\n    resetCounts() {\n      this.totalPassed = 0;\n      this.passedCounts = {};\n      this.trackedObjects = {};\n      this.lastPass = null;\n      this.logs = [];\n      this.addLog(\"🔄 Counter reset\");\n      \n      this.send({ topic: \"line_cross\", payload: { reset: true } });\n    },\n\n    sendCmd(cmd) {\n      this.send({ topic: \"ui_command\", payload: cmd });\n\n      if (cmd === \"start\") {\n        this.isDrawing = true;\n        this.addLog(\"▶ Started counting\");\n      }\n\n      if (cmd === \"stop\") {\n        this.isDrawing = false;\n        this.addLog(\"⏹ Stopped counting\");\n      }\n    },\n\n    adjustLine(delta) {\n      this.lineX += delta;\n      this.updateCountingLine();\n    },\n\n    initWS() {\n      this.ws = new WebSocket(`ws://${window.location.hostname}:8090`);\n      this.ws.binaryType = \"arraybuffer\";\n\n      this.ws.onopen = () => {\n        this.wsStatus = \"Connected\";\n        this.addLog(\"✅ WebSocket connected\");\n      };\n      \n      this.ws.onclose = () => {\n        this.wsStatus = \"Disconnected\";\n        this.addLog(\"❌ WebSocket disconnected\");\n        \n        // Auto-reconnect after 3 seconds\n        setTimeout(() => {\n          if (this.wsStatus === \"Disconnected\") {\n            this.addLog(\"🔄 Reconnecting...\");\n            this.initWS();\n          }\n        }, 3000);\n      };\n\n      this.ws.onerror = (err) => {\n        console.error(\"WebSocket error:\", err);\n        this.addLog(\"⚠️ WebSocket error\");\n      };\n\n      this.ws.onmessage = (e) => {\n        if (this.processingFrame) return;\n        \n        this.processingFrame = true;\n        \n        try {\n          const json = JSON.parse(\n            new TextDecoder().decode(new Uint8Array(e.data))\n          );\n          const data = json.data || json;\n\n          const now = Date.now();\n          if (now - this.lastImageUpdate >= this.imageUpdateInterval) {\n            this.renderImage(data);\n            this.lastImageUpdate = now;\n          }\n\n          if (this.isDrawing) {\n            this.checkLineCrossing(data);\n          }\n        } catch (err) {\n          console.error(\"WS parse error:\", err);\n        } finally {\n          this.processingFrame = false;\n        }\n      };\n    },\n\n    renderImage(data) {\n      if (!data?.image || !data?.resolution) return;\n\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      if (this.svgWidth !== data.resolution[0] || this.svgHeight !== data.resolution[1]) {\n        this.svgWidth = data.resolution[0];\n        this.svgHeight = data.resolution[1];\n        svg.setAttribute(\"viewBox\", `0 0 ${this.svgWidth} ${this.svgHeight}`);\n      }\n\n      if (!this.imageElement) {\n        this.imageElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"image\");\n        this.imageElement.setAttribute(\"x\", 0);\n        this.imageElement.setAttribute(\"y\", 0);\n        svg.appendChild(this.imageElement);\n      }\n\n      this.imageElement.setAttribute(\"width\", this.svgWidth);\n      this.imageElement.setAttribute(\"height\", this.svgHeight);\n      this.imageElement.setAttribute(\"href\", `data:image/jpeg;base64,${data.image}`);\n\n      if (!this.lineElement) {\n        this.drawCountingLine();\n      }\n    },\n\n    drawCountingLine() {\n      const svg = this.$refs.svg;\n      if (!svg) return;\n\n      if (!this.lineElement) {\n        this.lineElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"line\");\n        this.lineElement.setAttribute(\"id\", \"counting-line\");\n        this.lineElement.setAttribute(\"stroke\", \"#ff3333\");\n        this.lineElement.setAttribute(\"stroke-width\", 4);\n        this.lineElement.setAttribute(\"stroke-dasharray\", \"10,5\");\n        svg.appendChild(this.lineElement);\n      }\n\n      if (!this.labelElement) {\n        this.labelElement = document.createElementNS(\"http://www.w3.org/2000/svg\", \"text\");\n        this.labelElement.setAttribute(\"id\", \"line-label\");\n        this.labelElement.setAttribute(\"x\", 10);\n        this.labelElement.setAttribute(\"fill\", \"#ff3333\");\n        this.labelElement.setAttribute(\"font-size\", 18);\n        this.labelElement.setAttribute(\"font-weight\", \"bold\");\n        svg.appendChild(this.labelElement);\n      }\n\n      this.updateCountingLine();\n    },\n\n    updateCountingLine() {\n      if (!this.lineElement || !this.labelElement) return;\n\n      this.lineElement.setAttribute(\"x1\", this.lineX);\n      this.lineElement.setAttribute(\"y1\", 0);\n      this.lineElement.setAttribute(\"x2\", this.lineX);\n      this.lineElement.setAttribute(\"y2\", this.svgHeight);\n    },\n\n    checkLineCrossing(data) {\n      if (!Array.isArray(data?.boxes) || data.boxes.length === 0) {\n        return;\n      }\n\n      const PROXIMITY = 150;\n      const now = Date.now();\n      \n      const currentBoxKeys = new Set();\n      const usedTrackedKeys = new Set();\n\n      const sortedBoxes = data.boxes\n        .map(([x, y, w, h, score, cls]) => ({ x, y, w, h, score, cls }))\n        .sort((a, b) => a.x - b.x);\n\n      sortedBoxes.forEach(box => {\n        const { x, y, w, h, score, cls } = box;\n        const CLASS_NAMES = {\n          0: \"corn red\",\n          1: \"corn yellow\",\n          2: \"lays barbecue\",\n          3: \"lays chilli\",\n          4: \"lays original\",\n          5: \"lays saltedegg\",\n          6: \"lays seaweed\",\n          7: \"lays squid\"\n        };\n        const label = CLASS_NAMES[cls] ?? `Unknown-${cls}`;\n        let matchedKey = null;\n        let minDist = Infinity;\n\n        // Find matching tracked object\n        for (const key in this.trackedObjects) {\n          if (usedTrackedKeys.has(key)) continue;\n          \n          const obj = this.trackedObjects[key];\n          if (obj.label === label) {\n            const dx = x - obj.x;\n            const dy = y - obj.y;\n            const distSq = dx * dx + dy * dy;\n            \n            if (distSq < PROXIMITY * PROXIMITY && distSq < minDist) {\n              minDist = distSq;\n              matchedKey = key;\n            }\n          }\n        }\n\n        const key = matchedKey || `${label}_${now}_${Math.random().toString(36).slice(2, 6)}`;\n        currentBoxKeys.add(key);\n        if (matchedKey) {\n          usedTrackedKeys.add(matchedKey);\n        }\n\n        // CHECK FOR DOWNWARD PASS: was above line, now below line\n        if (this.trackedObjects[key]) {\n          const prevX = this.trackedObjects[key].x;\n          const currentX = x;\n\n          // Downward crossing detection\n          if (prevX < this.lineX && currentX >= this.lineX) {\n            this.totalPassed++;\n            this.passedCounts[label] = (this.passedCounts[label] || 0) + 1;\n            \n            this.lastPass = {\n              label: label,\n              time: new Date().toLocaleTimeString()\n            };\n            \n            this.addLog(`✅ COUNTED: ${label} passed line - Total: ${this.totalPassed}`);\n            \n            // Send count event to Node-RED\n            this.send({\n              topic: \"line_cross\",\n              payload: {\n                type: \"counted_pass\",\n                class: label,\n                time: new Date().toISOString(),\n                item: label,\n                direction: \"downward_pass\",\n                counted: true,\n                total: this.totalPassed,\n                classCount: this.passedCounts[label]\n              }\n            });\n          }\n        }\n\n        // Update tracked position\n        this.trackedObjects[key] = { x, y, label, lastSeen: now };\n      });\n\n      // Cleanup stale objects\n      const STALE_TIMEOUT = 3000;\n      for (const key in this.trackedObjects) {\n        if (!currentBoxKeys.has(key) && now - this.trackedObjects[key].lastSeen > STALE_TIMEOUT) {\n          delete this.trackedObjects[key];\n        }\n      }\n    }\n  },\n\n  mounted() {\n    this.initWS();\n  },\n\n  unmounted() {\n    if (this.ws) this.ws.close();\n  },\n};\n</script>\n\n<style>\n  .root {\n    display: grid;\n    grid-template-columns: 1fr 350px;\n    grid-template-rows: 1fr auto;\n    width: 100%;\n    height: 100%;\n    gap: 0;\n  }\n\n  .camera {\n    grid-column: 1;\n    grid-row: 1 / 3;\n    background: black;\n  }\n\n  .camera svg {\n    width: 100%;\n    height: 100%;\n  }\n\n  .result-panel {\n    grid-column: 2;\n    grid-row: 1;\n    padding: 15px;\n    background: #f9f9f9;\n    border-left: 2px solid #ddd;\n    overflow-y: auto;\n  }\n\n  .result-panel h3 {\n    margin: 0 0 15px 0;\n    color: #333;\n    font-size: 18px;\n  }\n\n  .count-display {\n    display: flex;\n    flex-direction: column;\n    gap: 15px;\n  }\n\n  .total-count {\n    display: flex;\n    justify-content: center;\n  }\n\n  .count-box {\n    padding: 20px;\n    border-radius: 8px;\n    text-align: center;\n    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n    border: 3px solid #5a67d8;\n    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);\n    width: 100%;\n  }\n\n  .count-box .label {\n    display: block;\n    font-size: 14px;\n    color: #fff;\n    font-weight: bold;\n    letter-spacing: 1px;\n  }\n\n  .count-box .number {\n    display: block;\n    font-size: 48px;\n    font-weight: bold;\n    margin-top: 5px;\n    color: #fff;\n  }\n\n  .last-event {\n    padding: 10px;\n    background: #d4edda;\n    border-radius: 4px;\n    font-size: 13px;\n    border: 1px solid #28a745;\n    text-align: center;\n  }\n\n  .breakdown-full {\n    padding: 12px;\n    background: white;\n    border-radius: 4px;\n    border: 1px solid #e0e0e0;\n  }\n\n  .breakdown-full h4 {\n    margin: 0 0 10px 0;\n    font-size: 14px;\n    color: #666;\n  }\n\n  .detail-item {\n    padding: 6px 0;\n    font-size: 13px;\n    border-bottom: 1px solid #f0f0f0;\n  }\n\n  .detail-item:last-child {\n    border-bottom: none;\n  }\n\n  .class-name {\n    color: #667eea;\n    font-weight: 600;\n  }\n\n  .panel {\n    grid-column: 2;\n    grid-row: 2;\n    padding: 14px;\n    background: #f5f5f5;\n    border-left: 2px solid #ddd;\n    border-top: 2px solid #ddd;\n  }\n\n  .buttons {\n    display: flex;\n    gap: 8px;\n  }\n\n  button {\n    flex: 1;\n    padding: 10px;\n    font-weight: bold;\n    border: none;\n    cursor: pointer;\n    border-radius: 4px;\n    font-size: 12px;\n  }\n\n  .start {\n    background: #4caf50;\n    color: white;\n  }\n\n  .stop {\n    background: #f44336;\n    color: white;\n  }\n\n  .reset {\n    background: #ff9800;\n    color: white;\n  }\n\n  .status {\n    margin-top: 8px;\n    font-size: 12px;\n    color: #666;\n  }\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 140,
+        "y": 140,
+        "wires": [
+            [
+                "f6fe5028db2293fa",
+                "192a8980cf09d165",
+                "749512c2742dda0a"
+            ]
+        ]
+    },
+    {
+        "id": "f6fe5028db2293fa",
         "type": "function",
         "z": "ccc7be52a837980a",
         "name": "Line Cross Counter",
@@ -3549,23 +3453,141 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 160,
+        "x": 450,
+        "y": 100,
         "wires": [
             [
-                "2ac0aab9247948c0"
+                "d4dce23f0e87e719"
             ],
             [
-                "0072e8cc3242535c"
+                "7e62c918f6ef1084"
             ]
         ]
     },
     {
-        "id": "20fbac9f283e0d39",
+        "id": "192a8980cf09d165",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Run Control",
+        "func": "if (msg.topic !== \"ui_command\") {\n    return null;\n}\n\nif (msg.payload === \"start\") {\n    flow.set(\"isRunning\", true);\n    return {\n        payload: \"start\",\n        status: \"🟢 Running\"\n    };\n}\n\nif (msg.payload === \"stop\") {\n    flow.set(\"isRunning\", false);\n    return {\n        payload: \"stop\",\n        status: \"🔴 Stopped\"\n    };\n}\n\nif (msg.payload === \"reset\") {\n    // Send reset to line cross counter\n    return {\n        topic: \"line_cross\",\n        payload: { reset: true }\n    };\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 340,
+        "wires": [
+            [
+                "7d901d5b3935b186",
+                "a5b3938e84e94f64",
+                "f310f8035c3b3152",
+                "a58d0be33c05af33"
+            ]
+        ]
+    },
+    {
+        "id": "749512c2742dda0a",
+        "type": "debug",
+        "z": "ccc7be52a837980a",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 470,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "7e62c918f6ef1084",
+        "type": "file",
+        "z": "ccc7be52a837980a",
+        "name": "Append History Log",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "utf8",
+        "x": 890,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7d901d5b3935b186",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Log Stop",
+        "func": "if (msg.status !== \"🔴 Stopped\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_stop\",\n    time: now,\n    event: \"counting_stopped\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 280,
+        "wires": [
+            [
+                "7e62c918f6ef1084"
+            ]
+        ]
+    },
+    {
+        "id": "a5b3938e84e94f64",
+        "type": "function",
+        "z": "ccc7be52a837980a",
+        "name": "Log Start",
+        "func": "if (msg.status !== \"🟢 Running\") return null;\n\nconst now = new Date().toISOString();\n\nmsg.filename = `/home/recamera/logs/linecross_log_${now.split('T')[0]}.jsonl`;\n\nmsg.payload = {\n    type: \"session_start\",\n    time: now,\n    event: \"counting_started\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 340,
+        "wires": [
+            [
+                "7e62c918f6ef1084"
+            ]
+        ]
+    },
+    {
+        "id": "f310f8035c3b3152",
+        "type": "ui-text",
+        "z": "ccc7be52a837980a",
+        "group": "ui_group_control",
+        "order": 3,
+        "width": "",
+        "height": "",
+        "name": "",
+        "label": "Status",
+        "format": "{{msg.payload}}",
+        "layout": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "wrapText": false,
+        "className": "",
+        "x": 550,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "a58d0be33c05af33",
         "type": "switch",
         "z": "ccc7be52a837980a",
-        "d": true,
-        "name": "START triggers bulk upload",
+        "name": "Stop triggers bulk upload",
         "property": "payload",
         "propertyType": "msg",
         "rules": [
@@ -3578,16 +3600,16 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 480,
-        "y": 620,
+        "x": 490,
+        "y": 460,
         "wires": [
             [
-                "4de6c56471bc7d62"
+                "d31d0356ac0255ae"
             ]
         ]
     },
     {
-        "id": "4de6c56471bc7d62",
+        "id": "d31d0356ac0255ae",
         "type": "exec",
         "z": "ccc7be52a837980a",
         "command": "ls /home/recamera/logs/*.jsonl 2>/dev/null || echo ''",
@@ -3598,18 +3620,18 @@
         "winHide": false,
         "oldrc": false,
         "name": "List all jsonl logs",
-        "x": 140,
-        "y": 720,
+        "x": 160,
+        "y": 560,
         "wires": [
             [
-                "dce4572b11a08839"
+                "d2ea3c2b05046799"
             ],
             [],
             []
         ]
     },
     {
-        "id": "dce4572b11a08839",
+        "id": "d2ea3c2b05046799",
         "type": "split",
         "z": "ccc7be52a837980a",
         "name": "Split filenames",
@@ -3620,16 +3642,16 @@
         "stream": false,
         "addname": "",
         "property": "payload",
-        "x": 380,
-        "y": 720,
+        "x": 400,
+        "y": 560,
         "wires": [
             [
-                "dfb53d6b1b05afd5"
+                "09de1de7c90b9617"
             ]
         ]
     },
     {
-        "id": "dfb53d6b1b05afd5",
+        "id": "09de1de7c90b9617",
         "type": "function",
         "z": "ccc7be52a837980a",
         "name": "Build upload request",
@@ -3640,16 +3662,16 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 380,
-        "y": 780,
+        "x": 400,
+        "y": 620,
         "wires": [
             [
-                "2320af5ff193be67"
+                "6d4fd6f2cf5a9c4a"
             ]
         ]
     },
     {
-        "id": "2320af5ff193be67",
+        "id": "6d4fd6f2cf5a9c4a",
         "type": "file in",
         "z": "ccc7be52a837980a",
         "name": "Read file",
@@ -3660,16 +3682,16 @@
         "sendError": true,
         "encoding": "utf8",
         "allProps": false,
-        "x": 600,
-        "y": 720,
+        "x": 620,
+        "y": 560,
         "wires": [
             [
-                "8e56cb94faf19b97"
+                "8bf8f92d4c1694d3"
             ]
         ]
     },
     {
-        "id": "8e56cb94faf19b97",
+        "id": "8bf8f92d4c1694d3",
         "type": "function",
         "z": "ccc7be52a837980a",
         "name": "Supabase headers",
@@ -3680,16 +3702,16 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 670,
-        "y": 800,
+        "x": 690,
+        "y": 640,
         "wires": [
             [
-                "3910dc8b6d358254"
+                "f7e2cfd583d50b3e"
             ]
         ]
     },
     {
-        "id": "3910dc8b6d358254",
+        "id": "f7e2cfd583d50b3e",
         "type": "http request",
         "z": "ccc7be52a837980a",
         "name": "Upload to Supabase",
@@ -3704,16 +3726,16 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 820,
-        "y": 700,
+        "x": 840,
+        "y": 540,
         "wires": [
             [
-                "a29cf2d661b0e765"
+                "14a704a5ebe40faf"
             ]
         ]
     },
     {
-        "id": "a29cf2d661b0e765",
+        "id": "14a704a5ebe40faf",
         "type": "function",
         "z": "ccc7be52a837980a",
         "name": "Parse Upload Response",
@@ -3724,10 +3746,39 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 890,
-        "y": 800,
+        "x": 910,
+        "y": 640,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "7d0d72954f65e99c",
+        "type": "inject",
+        "z": "ccc7be52a837980a",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "stop",
+        "payloadType": "str",
+        "x": 140,
+        "y": 440,
+        "wires": [
+            [
+                "a58d0be33c05af33"
+            ]
         ]
     },
     {
